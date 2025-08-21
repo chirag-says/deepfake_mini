@@ -4,28 +4,354 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta property="og:title" content="DeFraudAI" />
-    <meta property="og:description" content="AI-powered misinformation and deepfake detection platform" />
-    <meta property="og:image" content="https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=1200&h=630&fit=crop" type="image/png" />
+
+    <!-- Enhanced Meta Tags -->
+    <meta name="description" content="Advanced AI-powered platform for detecting misinformation, deepfakes, and fraudulent content. Protect yourself from digital deception with cutting-edge artificial intelligence." />
+    <meta name="keywords" content="AI, misinformation detection, deepfake detection, fraud prevention, artificial intelligence, content verification" />
+    <meta name="author" content="DeFraudAI Team" />
+    <meta name="robots" content="index, follow" />
+    <meta name="theme-color" content="#6366f1" />
+
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="DeFraudAI - Combat Misinformation with Advanced AI" />
+    <meta property="og:description" content="Revolutionary AI-powered platform for detecting misinformation, deepfakes, and fraudulent content. Join the fight against digital deception." />
+    <meta property="og:image" content="https://images.unsplash.com/photo-1677442136019-21780ecad995?w=1200&h=630&fit=crop&auto=format&q=80" />
     <meta property="og:url" content="https://defraudai.com" />
     <meta property="og:type" content="website" />
-    <meta property="og:author" content="DeFraudAI" />
     <meta property="og:site_name" content="DeFraudAI" />
-    <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:site" content="@defraudai" />
-    <meta property="twitter:title" content="DeFraudAI" />
-    <meta property="twitter:description" content="AI-powered misinformation and deepfake detection platform" />
-    <meta property="twitter:image" content="https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=1200&h=630&fit=crop" type="image/png" />
-    <link rel="shortcut icon" href="https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=32&h=32&fit=crop" type="image/x-icon" />
-    <link rel="apple-touch-icon" sizes="180x180" href="https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=180&h=180&fit=crop" type="image/png" />
-    <title>DeFraudAI - Combat Misinformation with AI</title>
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@defraudai" />
+    <meta name="twitter:creator" content="@defraudai" />
+    <meta name="twitter:title" content="DeFraudAI - Combat Misinformation with Advanced AI" />
+    <meta name="twitter:description" content="Revolutionary AI-powered platform for detecting misinformation, deepfakes, and fraudulent content." />
+    <meta name="twitter:image" content="https://images.unsplash.com/photo-1677442136019-21780ecad995?w=1200&h=630&fit=crop&auto=format&q=80" />
+
+    <!-- Enhanced Favicon and Icons -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='grad' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' stop-color='%236366f1'/><stop offset='50%' stop-color='%23a855f7'/><stop offset='100%' stop-color='%2306b6d4'/></linearGradient></defs><circle cx='50' cy='50' r='45' fill='url(%23grad)'/><path d='M30 40 L45 55 L70 30' stroke='white' stroke-width='4' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>"
+    />
+    <link rel="apple-touch-icon" sizes="180x180" href="https://images.unsplash.com/photo-1677442136019-21780ecad995?w=180&h=180&fit=crop&auto=format&q=80" />
+    <link rel="mask-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='black'/></svg>" color="#6366f1" />
+
+    <!-- Preconnect for Performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://images.unsplash.com" />
+    <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com" />
+
+    <!-- Enhanced Font Loading with display=swap for better performance -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+    <!-- CSS Import -->
+    <link rel="stylesheet" href="./src/index.css" />
+
+    <!-- Page Title -->
+    <title>DeFraudAI - Advanced AI-Powered Misinformation Detection Platform</title>
+
+    <!-- Enhanced Structured Data -->
+    <script type="application/ld+json">
+        {
+            "@context": "https://schema.org",
+            "@type": "WebApplication",
+            "name": "DeFraudAI",
+            "description": "Advanced AI-powered platform for detecting misinformation, deepfakes, and fraudulent content with stunning 3D glassy interface",
+            "url": "https://defraudai.com",
+            "applicationCategory": "SecurityApplication",
+            "operatingSystem": "Web Browser",
+            "browserRequirements": "Requires modern browser with CSS3 and HTML5 support",
+            "author": {
+                "@type": "Organization",
+                "name": "DeFraudAI Team"
+            },
+            "offers": {
+                "@type": "Offer",
+                "category": "AI Security Platform"
+            }
+        }
+    </script>
+
+    <!-- Critical CSS for above-the-fold content -->
+    <style>
+        /* Critical styles for faster initial load */
+        
+        body {
+            margin: 0;
+            background: #0f0f23;
+            font-family: 'Inter', system-ui, sans-serif;
+        }
+        
+        .loading-screen {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(135deg, #0f0f23, #1a1a3a);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        
+        .app-root {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0a0a1a, #1a1a2e, #16213e, #0f3460);
+        }
+    </style>
 </head>
 
-<body>
-    <div id="root"></div>
+<body class="antialiased">
+    <!-- Enhanced Loading Screen -->
+    <div id="loading-screen" class="loading-screen" role="dialog" aria-labelledby="loading-title" aria-describedby="loading-desc">
+        <div class="loading-content">
+            <div class="loading-logo" role="img" aria-label="DeFraudAI Loading Animation">
+                <svg viewBox="0 0 100 100" class="loading-spinner" aria-hidden="true">
+                    <defs>
+                        <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#6366f1"/>
+                            <stop offset="50%" stop-color="#a855f7"/>
+                            <stop offset="100%" stop-color="#06b6d4"/>
+                        </linearGradient>
+                    </defs>
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="url(#gradient)" stroke-width="8" stroke-linecap="round"/>
+                </svg>
+            </div>
+            <h2 id="loading-title" class="loading-text">DeFraudAI</h2>
+            <p id="loading-desc" class="loading-subtitle">Initializing Advanced AI Systems...</p>
+        </div>
+    </div>
+
+    <!-- Main App Container with Enhanced 3D Background -->
+    <div id="root" class="app-root" role="main">
+        <!-- Enhanced 3D Background Elements -->
+        <div class="background-grid" role="presentation" aria-hidden="true"></div>
+        <div class="background-gradient" role="presentation" aria-hidden="true"></div>
+
+        <!-- Enhanced 3D Glass Panels with better depth -->
+        <div class="glass-panel-1" role="presentation" aria-hidden="true"></div>
+        <div class="glass-panel-2" role="presentation" aria-hidden="true"></div>
+        <div class="glass-panel-3" role="presentation" aria-hidden="true"></div>
+        <div class="glass-panel-4" role="presentation" aria-hidden="true"></div>
+
+        <!-- Enhanced Floating Particles -->
+        <div class="particles" role="presentation" aria-hidden="true">
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+        </div>
+
+        <!-- New Glass Orbs for additional depth -->
+        <div class="glass-orbs" role="presentation" aria-hidden="true">
+            <div class="glass-orb"></div>
+            <div class="glass-orb"></div>
+            <div class="glass-orb"></div>
+        </div>
+    </div>
+
+    <!-- Enhanced Creator Badge -->
+    <div class="creator-badge" title="Created by Chirag" role="button" tabindex="0" aria-label="Created by Chirag">
+        Made by <span class="maker-text">CHIRAG</span>
+    </div>
+
+    <!-- Enhanced Scripts -->
+    <script type="module" src="/src/react-app/main.jsx"></script>
+
+    <!-- Enhanced Loading and Performance Script -->
+    <script>
+        // Performance timing
+        const perfStart = performance.now();
+
+        // Enhanced loading animation with better UX
+        function hideLoadingScreen() {
+            const loadingScreen = document.getElementById('loading-screen');
+            if (loadingScreen) {
+                loadingScreen.style.opacity = '0';
+                loadingScreen.style.pointerEvents = 'none';
+                loadingScreen.setAttribute('aria-hidden', 'true');
+
+                setTimeout(() => {
+                    loadingScreen.style.display = 'none';
+                }, 600);
+            }
+        }
+
+        // Wait for both DOM and resources
+        Promise.all([
+            new Promise(resolve => {
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', resolve);
+                } else {
+                    resolve();
+                }
+            }),
+            new Promise(resolve => {
+                if (document.readyState === 'complete') {
+                    resolve();
+                } else {
+                    window.addEventListener('load', resolve);
+                }
+            })
+        ]).then(() => {
+            // Minimum loading time for smooth experience
+            const minLoadingTime = 1500;
+            const elapsed = performance.now() - perfStart;
+            const remaining = Math.max(0, minLoadingTime - elapsed);
+
+            setTimeout(hideLoadingScreen, remaining);
+        });
+
+        // Enhanced intersection observer for animations
+        if ('IntersectionObserver' in window) {
+            const observerOptions = {
+                threshold: 0.1,
+                rootMargin: '0px 0px -50px 0px'
+            };
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('animate-in');
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, observerOptions);
+
+            // Initialize observer when DOM is ready
+            document.addEventListener('DOMContentLoaded', () => {
+                document.querySelectorAll('[data-animate]').forEach(el => {
+                    observer.observe(el);
+                });
+            });
+        }
+
+        // Performance monitoring and optimization
+        if ('performance' in window) {
+            window.addEventListener('load', () => {
+                // Log performance metrics
+                const perfData = performance.getEntriesByType('navigation')[0];
+                const loadTime = perfData.loadEventEnd - perfData.loadEventStart;
+                console.log(`🚀 Page load time: ${Math.round(loadTime)}ms`);
+
+                // Check for slow connections and optimize accordingly
+                if ('connection' in navigator) {
+                    const connection = navigator.connection;
+                    if (connection.effectiveType === 'slow-2g' || connection.effectiveType === '2g') {
+                        console.log('🐌 Slow connection detected, reducing animations');
+                        document.documentElement.style.setProperty('--transition-normal', '0.1s');
+                        document.documentElement.style.setProperty('--transition-slow', '0.2s');
+                    }
+                }
+            });
+        }
+
+        // Enhanced keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Tab') {
+                document.body.classList.add('keyboard-navigation');
+            }
+        });
+
+        document.addEventListener('mousedown', () => {
+            document.body.classList.remove('keyboard-navigation');
+        });
+
+        // Touch device optimization
+        if ('ontouchstart' in window) {
+            document.documentElement.classList.add('touch-device');
+        }
+
+        // Reduced motion preference handling
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            document.documentElement.classList.add('reduced-motion');
+            console.log('♿ Reduced motion mode enabled');
+        }
+
+        // High contrast mode detection
+        if (window.matchMedia && window.matchMedia('(prefers-contrast: high)').matches) {
+            document.documentElement.classList.add('high-contrast');
+            console.log('👁️ High contrast mode enabled');
+        }
+
+        // Dark mode preference
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark-mode');
+        }
+
+        // Error handling for loading failures
+        window.addEventListener('error', (e) => {
+            console.error('Loading error:', e.error);
+            hideLoadingScreen();
+        });
+
+        window.addEventListener('unhandledrejection', (e) => {
+            console.error('Promise rejection:', e.reason);
+        });
+
+        // Service Worker registration (if available)
+        if ('serviceWorker' in navigator && 'production' === 'production') {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => {
+                        console.log('SW registered: ', registration);
+                    })
+                    .catch(registrationError => {
+                        console.log('SW registration failed: ', registrationError);
+                    });
+            });
+        }
+
+        // Creator badge interaction
+        const creatorBadge = document.querySelector('.creator-badge');
+        if (creatorBadge) {
+            creatorBadge.addEventListener('click', () => {
+                console.log('👨‍💻 Created with ❤️ by Chirag');
+            });
+
+            creatorBadge.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    creatorBadge.click();
+                }
+            });
+        }
+
+        // Memory cleanup for better performance
+        window.addEventListener('beforeunload', () => {
+            // Clean up any running animations or timers if needed
+            if (observer && typeof observer.disconnect === 'function') {
+                observer.disconnect();
+            }
+        });
+
+        // Console welcome message
+        console.log(`
+        🚀 DeFraudAI - Advanced AI Platform
+        ✨ Enhanced 3D Glassy Background Active
+        🎨 Created by: CHIRAG
+        🔧 Performance Mode: Optimized
+        `);
+    </script>
+
+    <!-- Preload critical resources -->
+    <link rel="stylesheet" href="/src/index.css" />
+
     <script type="module" src="/src/react-app/main.jsx"></script>
 
 
+    <!-- Fallback for users with JavaScript disabled -->
+    <noscript>
+        <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #0a0a1a, #1a1a2e); display: flex; align-items: center; justify-content: center; color: white; font-family: 'Inter', sans-serif; text-align: center; z-index: 10000;">
+            <div>
+                <h1>DeFraudAI</h1>
+                <p>This application requires JavaScript to function properly.</p>
+                <p>Please enable JavaScript in your browser settings.</p>
+            </div>
+        </div>
+    </noscript>
 </body>
 
 </html>
