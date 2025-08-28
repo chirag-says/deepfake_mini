@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Search, AlertTriangle, Upload, Globe, ArrowRight, ExternalLink, CheckCircle, XCircle, Clock, Calendar, TrendingUp, Eye, RefreshCw, Star, Shield, Zap, Users, Award, Menu, X, Play, Pause } from "lucide-react";
+import { Search, AlertTriangle, Upload, Globe, ArrowRight, ExternalLink, CheckCircle, XCircle, Clock, Calendar, TrendingUp, Eye, RefreshCw, Star, Shield, Zap, Users, Award, Menu, X, Play, Pause, Camera, Image as ImageIcon, FileImage, CheckCircle as CheckIcon, XCircle as XIcon, Mail, Lock, User, Eye as EyeIcon, EyeOff, Chrome, Github, Twitter } from "lucide-react";
 
 // Enhanced Floating Card Component with Stagger Animation
 function FloatingCard({ children, delay = 0, className = "" }) {
@@ -67,7 +67,8 @@ function Button({ children, variant = "primary", size = "md", className = "", lo
     warning: "bg-gradient-to-r from-amber-600 to-orange-600 text-white hover:from-amber-700 hover:to-orange-700 shadow-xl hover:shadow-2xl hover:shadow-amber-500/25 transform hover:-translate-y-1 focus:ring-amber-500",
     danger: "bg-gradient-to-r from-red-600 to-rose-600 text-white hover:from-red-700 hover:to-rose-700 shadow-xl hover:shadow-2xl hover:shadow-red-500/25 transform hover:-translate-y-1 focus:ring-red-500",
     ghost: "bg-transparent text-slate-300 hover:bg-slate-800/50 hover:text-white",
-    glass: "bg-white/5 backdrop-blur-xl border border-white/10 text-white hover:bg-white/10 hover:border-white/20"
+    glass: "bg-white/5 backdrop-blur-xl border border-white/10 text-white hover:bg-white/10 hover:border-white/20",
+    social: "bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 text-slate-300 hover:bg-slate-700/50 hover:text-white"
   };
   
   return (
@@ -84,421 +85,70 @@ function Button({ children, variant = "primary", size = "md", className = "", lo
   );
 }
 
-// Enhanced Content Input Component
-function ContentInput({ content, onChange, onAnalyze, isAnalyzing }) {
+// Input Component
+function Input({ 
+  label, 
+  type = "text", 
+  placeholder, 
+  value, 
+  onChange, 
+  icon, 
+  className = "",
+  error = "",
+  ...props 
+}) {
   const [focused, setFocused] = useState(false);
-  const [wordCount, setWordCount] = useState(0);
+  const [showPassword, setShowPassword] = useState(false);
   
-  useEffect(() => {
-    setWordCount(content.trim().split(/\s+/).filter(word => word.length > 0).length);
-  }, [content]);
-  
-  return (
-    <div className="space-y-6">
-      <div className={`
-        relative transition-all duration-300
-        ${focused ? 'transform scale-[1.01]' : ''}
-      `}>
-        <div className={`
-          absolute inset-0 bg-gradient-to-r from-blue-500/20 to-indigo-500/20 rounded-2xl blur-xl transition-opacity duration-300
-          ${focused ? 'opacity-100' : 'opacity-0'}
-        `}></div>
-        
-        <div className="relative bg-slate-800/50 backdrop-blur-xl rounded-2xl border border-slate-700/50 overflow-hidden">
-          <div className="p-1">
-            <div className={`
-              bg-slate-900/50 rounded-xl border transition-all duration-300
-              ${focused 
-                ? 'border-blue-500/50 shadow-lg shadow-blue-500/10' 
-                : 'border-slate-700/50'
-              }
-            `}>
-              <textarea
-                value={content}
-                onChange={(e) => onChange(e.target.value)}
-                onFocus={() => setFocused(true)}
-                onBlur={() => setFocused(false)}
-                placeholder="Paste news articles, social media posts, or any suspicious content here for instant verification..."
-                className="w-full h-48 p-6 bg-transparent text-white placeholder-slate-400 resize-none focus:outline-none"
-                disabled={isAnalyzing}
-              />
-              
-              <div className="flex items-center justify-between p-4 border-t border-slate-700/50">
-                <div className="flex items-center space-x-4 text-sm text-slate-400">
-                  <span>{wordCount} words</span>
-                  <span className="w-1 h-1 bg-slate-600 rounded-full"></span>
-                  <span>{content.length} characters</span>
-                </div>
-                
-                <div className="flex items-center space-x-3">
-                  {content.trim() && (
-                    <div className="flex items-center text-xs text-slate-500">
-                      <Shield className="w-3 h-3 mr-1" />
-                      <span>Secure analysis</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2 text-sm text-slate-400">
-          <div className="flex items-center">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-2"></div>
-            <span>AI-powered verification</span>
-          </div>
-        </div>
-        
-        <Button
-          onClick={onAnalyze}
-          disabled={!content.trim() || isAnalyzing}
-          loading={isAnalyzing}
-          size="lg"
-          className="min-w-[200px]"
-        >
-          {isAnalyzing ? (
-            "Analyzing Content..."
-          ) : (
-            <>
-              <Search className="mr-2 w-5 h-5" />
-              Verify Content
-            </>
-          )}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-// Enhanced Trust Score Visualization
-function TrustScoreVisualization({ score, size = "large" }) {
-  const [animatedScore, setAnimatedScore] = useState(0);
-  
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setAnimatedScore(score);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [score]);
-  
-  const radius = size === "large" ? 90 : 60;
-  const strokeWidth = size === "large" ? 12 : 8;
-  const normalizedRadius = radius - strokeWidth * 2;
-  const circumference = normalizedRadius * 2 * Math.PI;
-  const strokeDasharray = `${circumference} ${circumference}`;
-  const strokeDashoffset = circumference - (animatedScore / 100) * circumference;
-  
-  const getColor = (score) => {
-    if (score >= 80) return { stroke: "#10b981", bg: "from-green-500/20 to-emerald-500/20", text: "text-green-400" };
-    if (score >= 60) return { stroke: "#f59e0b", bg: "from-amber-500/20 to-orange-500/20", text: "text-amber-400" };
-    return { stroke: "#ef4444", bg: "from-red-500/20 to-rose-500/20", text: "text-red-400" };
+  const togglePassword = () => {
+    if (type === "password") {
+      setShowPassword(!showPassword);
+    }
   };
   
-  const colors = getColor(animatedScore);
+  const inputType = type === "password" && showPassword ? "text" : type;
   
   return (
-    <div className="relative flex items-center justify-center">
-      <div className={`absolute inset-0 bg-gradient-to-r ${colors.bg} rounded-full blur-xl opacity-50`}></div>
-      <svg
-        height={radius * 2}
-        width={radius * 2}
-        className="relative transform -rotate-90"
-      >
-        <circle
-          stroke="#374151"
-          fill="transparent"
-          strokeWidth={strokeWidth}
-          r={normalizedRadius}
-          cx={radius}
-          cy={radius}
+    <div className={`space-y-2 ${className}`}>
+      {label && (
+        <label className="text-sm font-medium text-slate-300 flex items-center">
+          {icon && <span className="mr-2">{icon}</span>}
+          {label}
+        </label>
+      )}
+      <div className="relative">
+        <input
+          type={inputType}
+          value={value}
+          onChange={onChange}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          placeholder={placeholder}
+          className={`
+            w-full px-4 py-3 bg-slate-800/50 backdrop-blur-sm border rounded-xl 
+            text-white placeholder-slate-500 focus:outline-none transition-all duration-300
+            ${focused ? 'border-blue-500/50 shadow-lg shadow-blue-500/10' : 'border-slate-700/50'}
+            ${error ? 'border-red-500/50' : ''}
+          `}
+          {...props}
         />
-        <circle
-          stroke={colors.stroke}
-          fill="transparent"
-          strokeWidth={strokeWidth}
-          strokeDasharray={strokeDasharray}
-          style={{
-            strokeDashoffset,
-            transition: 'stroke-dashoffset 2s ease-in-out'
-          }}
-          strokeLinecap="round"
-          r={normalizedRadius}
-          cx={radius}
-          cy={radius}
-        />
-      </svg>
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="text-center">
-          <div className={`${size === "large" ? "text-4xl" : "text-2xl"} font-bold text-white`}>
-            {Math.round(animatedScore)}%
-          </div>
-          {size === "large" && (
-            <div className={`text-sm ${colors.text} font-medium`}>
-              Trust Score
-            </div>
-          )}
-        </div>
+        {type === "password" && (
+          <button
+            type="button"
+            onClick={togglePassword}
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-500 hover:text-slate-300"
+          >
+            {showPassword ? <EyeOff className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
+          </button>
+        )}
       </div>
+      {error && (
+        <p className="text-sm text-red-400 flex items-center">
+          <AlertTriangle className="w-4 h-4 mr-1" />
+          {error}
+        </p>
+      )}
     </div>
-  );
-}
-
-// Enhanced Analysis Result Component
-function EnhancedAnalysisResult({ result }) {
-  const [activeTab, setActiveTab] = useState('overview');
-  
-  if (!result) return null;
-  
-  const { trustScore, status, message, sources = [], analysis = {} } = result;
-  
-  const statusIcon = status === "success" ? 
-    <CheckCircle className="w-6 h-6 text-green-500" /> : 
-    <XCircle className="w-6 h-6 text-red-500" />;
-    
-  const statusColor = status === "success" ? "text-green-500" : "text-red-500";
-  const statusBg = status === "success" ? "bg-green-500/20" : "bg-red-500/20";
-  
-  const tabs = [
-    { id: 'overview', label: 'Overview', icon: Eye },
-    { id: 'sources', label: `Sources (${sources.length})`, icon: Globe },
-    { id: 'analysis', label: 'Detailed Analysis', icon: Search }
-  ];
-  
-  return (
-    <FloatingCard className="space-y-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h3 className="text-2xl font-bold text-white">Verification Results</h3>
-        <div className={`flex items-center px-4 py-2 rounded-full ${statusBg} ${statusColor} backdrop-blur-sm`}>
-          {statusIcon}
-          <span className="ml-2 text-sm font-semibold capitalize">{status}</span>
-        </div>
-      </div>
-      
-      {/* Tab Navigation */}
-      <div className="flex space-x-1 bg-slate-800/50 p-1 rounded-2xl">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`
-                flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300
-                ${activeTab === tab.id
-                  ? 'bg-blue-600 text-white shadow-lg'
-                  : 'text-slate-400 hover:text-slate-300 hover:bg-slate-700/50'
-                }
-              `}
-            >
-              <Icon className="w-4 h-4 mr-2" />
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
-      
-      {/* Tab Content */}
-      <div className="min-h-[400px]">
-        {activeTab === 'overview' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Trust Score */}
-            <div className="bg-slate-800/30 backdrop-blur-sm rounded-2xl p-8 border border-slate-700/50">
-              <div className="text-center">
-                <TrustScoreVisualization score={trustScore} />
-                <div className="mt-6">
-                  <p className="text-slate-300 text-sm leading-relaxed">
-                    Our AI analyzed this content against multiple factors including source credibility, 
-                    factual accuracy, and potential misinformation indicators.
-                  </p>
-                </div>
-              </div>
-            </div>
-            
-            {/* Summary */}
-            <div className="bg-slate-800/30 backdrop-blur-sm rounded-2xl p-8 border border-slate-700/50">
-              <h4 className="text-xl font-semibold text-white mb-4">Analysis Summary</h4>
-              <p className="text-slate-300 leading-relaxed mb-6">{message}</p>
-              
-              {/* Quick Stats */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-slate-900/50 rounded-xl p-4 text-center">
-                  <div className="text-2xl font-bold text-blue-400">{sources.length}</div>
-                  <div className="text-xs text-slate-400">Sources Found</div>
-                </div>
-                <div className="bg-slate-900/50 rounded-xl p-4 text-center">
-                  <div className="text-2xl font-bold text-purple-400">
-                    {analysis.flags?.length || 0}
-                  </div>
-                  <div className="text-xs text-slate-400">Issues Detected</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-        
-        {activeTab === 'sources' && (
-          <div className="space-y-6">
-            {sources.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {sources.map((source, index) => (
-                  <SourceCard key={index} source={source} index={index} />
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <Globe className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-                <h4 className="text-xl font-semibold text-slate-400 mb-2">No Sources Found</h4>
-                <p className="text-slate-500">
-                  Our analysis couldn't find reliable sources to verify this content.
-                  This may indicate potential misinformation.
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-        
-        {activeTab === 'analysis' && (
-          <div className="space-y-6">
-            {analysis.flags && analysis.flags.length > 0 && (
-              <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6">
-                <h5 className="text-red-400 font-semibold mb-4 flex items-center">
-                  <AlertTriangle className="w-5 h-5 mr-2" />
-                  Potential Issues Detected
-                </h5>
-                <div className="space-y-3">
-                  {analysis.flags.map((flag, index) => (
-                    <div key={index} className="flex items-start text-red-300 text-sm">
-                      <XCircle className="w-4 h-4 mr-3 mt-0.5 flex-shrink-0" />
-                      <span>{flag}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            
-            {analysis.highlights && analysis.highlights.length > 0 && (
-              <div className="bg-green-500/10 border border-green-500/20 rounded-2xl p-6">
-                <h5 className="text-green-400 font-semibold mb-4 flex items-center">
-                  <CheckCircle className="w-5 h-5 mr-2" />
-                  Positive Indicators
-                </h5>
-                <div className="space-y-3">
-                  {analysis.highlights.map((highlight, index) => (
-                    <div key={index} className="flex items-start text-green-300 text-sm">
-                      <CheckCircle className="w-4 h-4 mr-3 mt-0.5 flex-shrink-0" />
-                      <span>{highlight}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            
-            {(!analysis.flags || analysis.flags.length === 0) && 
-             (!analysis.highlights || analysis.highlights.length === 0) && (
-              <div className="text-center py-12">
-                <Search className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-                <h4 className="text-xl font-semibold text-slate-400 mb-2">Analysis Complete</h4>
-                <p className="text-slate-500">
-                  No specific issues or highlights were identified in this content.
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </FloatingCard>
-  );
-}
-
-// Enhanced Source Card
-function SourceCard({ source, index }) {
-  const credibility = source.credibility || 50;
-  const credibilityColor = credibility >= 80 ? "text-green-400" : credibility >= 60 ? "text-amber-400" : "text-red-400";
-  const credibilityBg = credibility >= 80 ? "bg-green-500/20" : credibility >= 60 ? "bg-amber-500/20" : "bg-red-500/20";
-  const credibilityLabel = credibility >= 80 ? "High" : credibility >= 60 ? "Medium" : "Low";
-  
-  return (
-    <div className="bg-slate-800/40 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50 hover:border-slate-600/50 transition-all duration-300 group">
-      <div className="flex justify-between items-start mb-4">
-        <h4 className="font-semibold text-white group-hover:text-blue-300 transition-colors">
-          {source.name || `Source ${index + 1}`}
-        </h4>
-        <span className={`px-3 py-1 rounded-full text-xs font-medium ${credibilityColor} ${credibilityBg} backdrop-blur-sm`}>
-          {credibilityLabel}
-        </span>
-      </div>
-      
-      {source.url && (
-        <a 
-          href={source.url} 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="text-blue-400 hover:text-blue-300 text-sm flex items-center mb-4 truncate group/link"
-        >
-          <span className="truncate">{source.url}</span>
-          <ExternalLink className="ml-2 w-3 h-3 group-hover/link:translate-x-0.5 group-hover/link:-translate-y-0.5 transition-transform" />
-        </a>
-      )}
-      
-      {source.description && (
-        <p className="text-slate-300 text-sm mb-4 line-clamp-3">{source.description}</p>
-      )}
-      
-      <div className="flex items-center justify-between">
-        <div className="flex-1 mr-4">
-          <div className="w-full bg-slate-700/50 rounded-full h-3 overflow-hidden">
-            <div 
-              className={`h-3 rounded-full transition-all duration-1000 ease-out ${
-                credibility >= 80 ? 'bg-gradient-to-r from-green-500 to-emerald-500' : 
-                credibility >= 60 ? 'bg-gradient-to-r from-amber-500 to-orange-500' : 
-                'bg-gradient-to-r from-red-500 to-rose-500'
-              }`}
-              style={{ width: `${credibility}%` }}
-            ></div>
-          </div>
-        </div>
-        <span className="text-slate-400 text-sm font-medium">{credibility}%</span>
-      </div>
-    </div>
-  );
-}
-
-// Mobile Navigation
-function MobileNav({ isOpen, setIsOpen }) {
-  return (
-    <>
-      {isOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/100 backdrop-blur-md md:hidden">
-          <div className="flex flex-col h-full">
-            <div className="flex items-center justify-between p-6 border-b border-slate-800">
-              <div className="flex items-center space-x-3">
-                <img 
-                  src="/DeFraudAI_Logo-removebg-preview.png" 
-                  alt="DeFraudAI Logo" 
-                  className="w-10 h-10 object-contain rounded-full border-2 border-blue-500"
-                />
-                <span className="text-xl font-bold text-white">DeFraudAI</span>
-              </div>
-              <Button variant="ghost" size="sm" onClick={() => setIsOpen(false)}>
-                <X className="w-6 h-6" />
-              </Button>
-            </div>
-            
-            <nav className="flex-1 p-6 space-y-4">
-              {['Verify Content', 'Myth Buster', 'About', 'Contact'].map((item) => (
-                <Button key={item} variant="ghost" className="w-full justify-start text-lg">
-                  {item}
-                </Button>
-              ))}
-            </nav>
-          </div>
-        </div>
-      )}
-    </>
   );
 }
 
@@ -567,12 +217,1043 @@ function ParticleBackground() {
   );
 }
 
-// Main Component
+// Deep Fact Analysis Page Component
+function DeepFactAnalysisPage({ onBack }) {
+  const [content, setContent] = useState("");
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [result, setResult] = useState(null);
+  
+  const calculateTrustScore = (analysis, sources) => {
+    let score = 50;
+    if (analysis?.flags?.length) score -= analysis.flags.length * 10;
+    if (analysis?.highlights?.length) score += analysis.highlights.length * 5;
+    if (sources?.length > 0) {
+      const avgCredibility = sources.reduce((sum, src) => sum + (src.credibility || 50), 0) / sources.length;
+      score = (score * 0.4) + (avgCredibility * 0.6);
+    } else {
+      score -= 20;
+    }
+    return Math.max(0, Math.min(100, Math.round(score)));
+  };
+  
+  const analyzeContent = async () => {
+    if (!content.trim()) return;
+    setIsAnalyzing(true);
+    setResult(null);
+    
+    try {
+      console.log("Starting analysis for content:", content.substring(0, 100) + "...");
+      
+      // Enhanced prompt for better analysis
+      const prompt = `
+        Analyze the following content for misinformation, fake news, or deceptive content. 
+        Provide a detailed analysis including:
+        1. Overall credibility assessment (0-100%)
+        2. Potential red flags or issues
+        3. Positive aspects or verified facts
+        4. Any relevant sources that could verify or debunk this information
+        
+        Content: "${content}"
+        
+        Please format your response as a JSON object with the following structure:
+        {
+          "trustScore": [number between 0-100],
+          "status": "success" or "error",
+          "message": "[summary of your analysis]",
+          "flags": ["array of potential issues"],
+          "highlights": ["array of positive aspects"],
+          "sources": [
+            {
+              "name": "[source name]",
+              "url": "[source URL if available]",
+              "credibility": [number 0-100],
+              "description": "[brief description]"
+            }
+          ]
+        }
+      `;
+      
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${import.meta.env.VITE_GEMINI_API_KEY}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [{ text: prompt }],
+              },
+            ],
+          }),
+        }
+      );
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log("Analysis result:", data);
+      
+      // Extract the response text
+      const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || "No response";
+      
+      // Try to parse JSON from the response
+      let analysisData;
+      try {
+        // Look for JSON in the response (it might be wrapped in markdown code blocks)
+        const jsonMatch = responseText.match(/```json\n([\s\S]*?)\n```/) || 
+                         responseText.match(/```\n([\s\S]*?)\n```/) ||
+                         responseText.match(/{[\s\S]*}/);
+        
+        if (jsonMatch) {
+          const jsonString = jsonMatch[1] || jsonMatch[0];
+          analysisData = JSON.parse(jsonString);
+        } else {
+          // Fallback: create a basic analysis from the text
+          analysisData = {
+            trustScore: 50, // Default neutral score
+            status: "success",
+            message: responseText,
+            flags: [],
+            highlights: [],
+            sources: []
+          };
+        }
+      } catch (e) {
+        console.error("Failed to parse analysis response:", e);
+        // Fallback to basic analysis
+        analysisData = {
+          trustScore: 50,
+          status: "success",
+          message: responseText,
+          flags: [],
+          highlights: [],
+          sources: []
+        };
+      }
+      
+      // Calculate trust score if not provided or if we want to adjust it
+      const trustScore = analysisData.trustScore || 
+                         calculateTrustScore(analysisData, analysisData.sources || []);
+      
+      setResult({
+        trustScore,
+        status: analysisData.status || "success",
+        message: analysisData.message || "Analysis completed",
+        sources: analysisData.sources || [],
+        analysis: {
+          flags: analysisData.flags || [],
+          highlights: analysisData.highlights || []
+        }
+      });
+      
+    } catch (error) {
+      console.error("Analysis failed:", error);
+      setResult({
+        trustScore: 0,
+        status: "error",
+        message: "Analysis failed. Please try again.",
+        sources: [],
+        analysis: {
+          flags: ["Analysis service unavailable"],
+          highlights: []
+        }
+      });
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+  
+  return (
+    <div className="min-h-screen bg-slate-900 text-slate-100 relative overflow-hidden">
+      {/* Animated Background */}
+      <div className="fixed inset-0 z-0">
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900"></div>
+        <div className="absolute inset-0 bg-gradient-to-tr from-blue-900/10 via-transparent to-indigo-900/10"></div>
+        <ParticleBackground />
+      </div>
+      
+      {/* Content */}
+      <div className="relative z-10">
+        {/* Header */}
+        <header className="bg-slate-900/80 backdrop-blur-2xl border-b border-slate-700/50 fixed top-0 left-0 right-0 z-40 shadow-2xl">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <Button variant="ghost" onClick={onBack}>
+                  <ArrowRight className="w-5 h-5 rotate-180 mr-2" />
+                  Back
+                </Button>
+                <h1 className="text-2xl font-bold text-white">Deep Fact Analysis</h1>
+              </div>
+            </div>
+          </div>
+        </header>
+        
+        {/* Spacer for fixed header */}
+        <div className="h-24"></div>
+        
+        {/* Main Content */}
+        <section className="py-20 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-5xl mx-auto">
+            <div className="text-center mb-16">
+              <h3 className="text-4xl font-bold text-white mb-4">
+                Advanced Content Verification
+              </h3>
+              <p className="text-xl text-slate-400 max-w-2xl mx-auto">
+                Paste any content and get comprehensive analysis powered by advanced AI algorithms
+              </p>
+            </div>
+            
+            <FloatingCard className="mb-12">
+              <div className="space-y-6">
+                <div className={`
+                  relative transition-all duration-300
+                `}>
+                  <div className={`
+                    absolute inset-0 bg-gradient-to-r from-blue-500/20 to-indigo-500/20 rounded-2xl blur-xl transition-opacity duration-300
+                  `}></div>
+                  
+                  <div className="relative bg-slate-800/50 backdrop-blur-xl rounded-2xl border border-slate-700/50 overflow-hidden">
+                    <div className="p-1">
+                      <div className={`
+                        bg-slate-900/50 rounded-xl border transition-all duration-300
+                      `}>
+                        <textarea
+                          value={content}
+                          onChange={(e) => setContent(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" ) {
+                              e.preventDefault(); // prevent newline
+                              if (!isAnalyzing) analyzeContent(); // call the analyze function
+                            }
+                          }}
+                          placeholder="Paste news articles, social media posts, or any suspicious content here for instant verification..."
+                          className="w-full h-48 p-6 bg-transparent text-white placeholder-slate-400 resize-none focus:outline-none"
+                          disabled={isAnalyzing}
+                        />
+                        
+                        <div className="flex items-center justify-between p-4 border-t border-slate-700/50">
+                          <div className="flex items-center space-x-4 text-sm text-slate-400">
+                            <span>{content.trim().split(/\s+/).filter(word => word.length > 0).length} words</span>
+                            <span className="w-1 h-1 bg-slate-600 rounded-full"></span>
+                            <span>{content.length} characters</span>
+                          </div>
+                          
+                          <div className="flex items-center space-x-3">
+                            {content.trim() && (
+                              <div className="flex items-center text-xs text-slate-500">
+                                <Shield className="w-3 h-3 mr-1" />
+                                <span>Secure analysis</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2 text-sm text-slate-400">
+                    <div className="flex items-center">
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-2"></div>
+                      <span>AI-powered verification</span>
+                    </div>
+                  </div>
+                  
+                  <Button
+                    onClick={analyzeContent}
+                    disabled={!content.trim() || isAnalyzing}
+                    loading={isAnalyzing}
+                    size="lg"
+                    className="min-w-[200px]"
+                  >
+                    {isAnalyzing ? (
+                      "Analyzing Content..."
+                    ) : (
+                      <>
+                        <Search className="mr-2 w-5 h-5" />
+                        Verify Content
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </FloatingCard>
+            
+            {result && (
+              <FloatingCard className="space-y-8">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                  <h3 className="text-2xl font-bold text-white">Verification Results</h3>
+                  <div className={`flex items-center px-4 py-2 rounded-full ${result.status === "success" ? "bg-green-500/20 text-green-500" : "bg-red-500/20 text-red-500"} backdrop-blur-sm`}>
+                    {result.status === "success" ? 
+                      <CheckCircle className="w-6 h-6 mr-2" /> : 
+                      <XCircle className="w-6 h-6 mr-2" />
+                    }
+                    <span className="text-sm font-semibold capitalize">{result.status}</span>
+                  </div>
+                </div>
+                
+                {/* Summary */}
+                <div className="bg-slate-800/30 backdrop-blur-sm rounded-2xl p-8 border border-slate-700/50">
+                  <h4 className="text-xl font-semibold text-white mb-4">Analysis Summary</h4>
+                  <p className="text-slate-300 leading-relaxed mb-6">{result.message}</p>
+                  
+                  {/* Quick Stats */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-slate-900/50 rounded-xl p-4 text-center">
+                      <div className="text-2xl font-bold text-blue-400">{result.sources.length}</div>
+                      <div className="text-xs text-slate-400">Sources Found</div>
+                    </div>
+                    <div className="bg-slate-900/50 rounded-xl p-4 text-center">
+                      <div className="text-2xl font-bold text-purple-400">
+                        {result.analysis.flags?.length || 0}
+                      </div>
+                      <div className="text-xs text-slate-400">Issues Detected</div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Detailed Analysis */}
+                {result.analysis.flags && result.analysis.flags.length > 0 && (
+                  <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6">
+                    <h5 className="text-red-400 font-semibold mb-4 flex items-center">
+                      <AlertTriangle className="w-5 h-5 mr-2" />
+                      Potential Issues Detected
+                    </h5>
+                    <div className="space-y-3">
+                      {result.analysis.flags.map((flag, index) => (
+                        <div key={index} className="flex items-start text-red-300 text-sm">
+                          <XCircle className="w-4 h-4 mr-3 mt-0.5 flex-shrink-0" />
+                          <span>{flag}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {result.analysis.highlights && result.analysis.highlights.length > 0 && (
+                  <div className="bg-green-500/10 border border-green-500/20 rounded-2xl p-6">
+                    <h5 className="text-green-400 font-semibold mb-4 flex items-center">
+                      <CheckCircle className="w-5 h-5 mr-2" />
+                      Positive Indicators
+                    </h5>
+                    <div className="space-y-3">
+                      {result.analysis.highlights.map((highlight, index) => (
+                        <div key={index} className="flex items-start text-green-300 text-sm">
+                          <CheckCircle className="w-4 h-4 mr-3 mt-0.5 flex-shrink-0" />
+                          <span>{highlight}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </FloatingCard>
+            )}
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+// Media Authenticity Page Component
+function MediaAuthenticityPage({ onBack }) {
+  const [mediaFile, setMediaFile] = useState(null);
+  const [mediaPreview, setMediaPreview] = useState(null);
+  const [isMediaAnalyzing, setIsMediaAnalyzing] = useState(false);
+  const [mediaResult, setMediaResult] = useState(null);
+  
+  const handleMediaFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file && file.type.startsWith('image/')) {
+      setMediaFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setMediaPreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+  
+  const analyzeMedia = async () => {
+    if (!mediaFile) return;
+    setIsMediaAnalyzing(true);
+    setMediaResult(null);
+    
+    try {
+      // Convert image to base64 for API
+      const base64Image = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(mediaFile);
+      });
+      
+      // Enhanced prompt for deepfake detection
+      const prompt = `
+        Analyze this image for authenticity and determine if it's a deepfake or original.
+        Provide a detailed analysis including:
+        1. Overall authenticity assessment (0-100%)
+        2. Potential signs of manipulation or AI generation
+        3. Technical indicators of authenticity
+        
+        Image data: ${base64Image}
+        
+        Please format your response as a JSON object with the following structure:
+        {
+          "isOriginal": [boolean],
+          "confidence": [number between 0-100],
+          "message": "[summary of your analysis]",
+          "flags": ["array of potential issues"],
+          "highlights": ["array of positive aspects"]
+        }
+      `;
+      
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${import.meta.env.VITE_GEMINI_API_KEY}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [{ text: prompt }],
+              },
+            ],
+          }),
+        }
+      );
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log("Media analysis result:", data);
+      
+      // Extract the response text
+      const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || "No response";
+      
+      // Try to parse JSON from the response
+      let analysisData;
+      try {
+        // Look for JSON in the response (it might be wrapped in markdown code blocks)
+        const jsonMatch = responseText.match(/```json\n([\s\S]*?)\n```/) || 
+                         responseText.match(/```\n([\s\S]*?)\n```/) ||
+                         responseText.match(/{[\s\S]*}/);
+        
+        if (jsonMatch) {
+          const jsonString = jsonMatch[1] || jsonMatch[0];
+          analysisData = JSON.parse(jsonString);
+        } else {
+          // Fallback: create a basic analysis from the text
+          analysisData = {
+            isOriginal: true, // Default to original
+            confidence: 50,
+            message: responseText,
+            flags: [],
+            highlights: []
+          };
+        }
+      } catch (e) {
+        console.error("Failed to parse media analysis response:", e);
+        // Fallback to basic analysis
+        analysisData = {
+          isOriginal: true,
+          confidence: 50,
+          message: responseText,
+          flags: [],
+          highlights: []
+        };
+      }
+      
+      setMediaResult({
+        isOriginal: analysisData.isOriginal || true,
+        confidence: analysisData.confidence || 50,
+        message: analysisData.message || "Analysis completed",
+        flags: analysisData.flags || [],
+        highlights: analysisData.highlights || []
+      });
+      
+    } catch (error) {
+      console.error("Media analysis failed:", error);
+      setMediaResult({
+        isOriginal: false,
+        confidence: 0,
+        message: "Analysis failed. Please try again.",
+        flags: ["Analysis service unavailable"],
+        highlights: []
+      });
+    } finally {
+      setIsMediaAnalyzing(false);
+    }
+  };
+  
+  return (
+    <div className="min-h-screen bg-slate-900 text-slate-100 relative overflow-hidden">
+      {/* Animated Background */}
+      <div className="fixed inset-0 z-0">
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900"></div>
+        <div className="absolute inset-0 bg-gradient-to-tr from-green-900/10 via-transparent to-emerald-900/10"></div>
+        <ParticleBackground />
+      </div>
+      
+      {/* Content */}
+      <div className="relative z-10">
+        {/* Header */}
+        <header className="bg-slate-900/80 backdrop-blur-2xl border-b border-slate-700/50 fixed top-0 left-0 right-0 z-40 shadow-2xl">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <Button variant="ghost" onClick={onBack}>
+                  <ArrowRight className="w-5 h-5 rotate-180 mr-2" />
+                  Back
+                </Button>
+                <h1 className="text-2xl font-bold text-white">Media Authenticity</h1>
+              </div>
+            </div>
+          </div>
+        </header>
+        
+        {/* Spacer for fixed header */}
+        <div className="h-24"></div>
+        
+        {/* Main Content */}
+        <section className="py-20 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-5xl mx-auto">
+            <div className="text-center mb-16">
+              <h3 className="text-4xl font-bold text-white mb-4">
+                Deepfake Detection
+              </h3>
+              <p className="text-xl text-slate-400 max-w-2xl mx-auto">
+                Upload an image to check if it's original or AI-generated using advanced computer vision algorithms
+              </p>
+            </div>
+            
+            <FloatingCard className="mb-12">
+              <div className="space-y-8">
+                {/* Image Upload Area */}
+                <div className="relative transition-all duration-300">
+                  <div className={`absolute inset-0 bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-2xl blur-xl transition-opacity duration-300 ${mediaPreview ? 'opacity-100' : 'opacity-0'}`}></div>
+                  <div className="relative bg-slate-800/50 backdrop-blur-xl rounded-2xl border border-slate-700/50 overflow-hidden px-4">
+                    <div className="p-1">
+                      <div className={`bg-slate-900/50 rounded-xl border ${mediaPreview ? 'border-green-500/50 shadow-lg shadow-green-500/10' : 'border-slate-700/50'} transition-all duration-300`}>
+                        {mediaPreview ? (
+                          <div className="p-4">
+                            <img src={mediaPreview} alt="Preview" className="max-w-full max-h-64 mx-auto rounded-lg" />
+                          </div>
+                        ) : (
+                          <div className="p-8 text-center">
+                            <Camera className="w-12 h-12 text-slate-500 mx-auto mb-4" />
+                            <p className="text-slate-400 mb-4">Upload an image to check for deepfakes</p>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleMediaFileChange}
+                              className="hidden"
+                              id="media-upload"
+                            />
+                            <Button
+                              variant="outline"
+                              onClick={() => document.getElementById('media-upload').click()}
+                            >
+                              <FileImage className="mr-2 w-4 h-4" />
+                              Select Image
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {mediaPreview && (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2 text-sm text-slate-400">
+                      <div className="flex items-center">
+                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-2"></div>
+                        <span>AI-powered deepfake detection</span>
+                      </div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={analyzeMedia}
+                      disabled={isMediaAnalyzing}
+                      loading={isMediaAnalyzing}
+                    >
+                      {isMediaAnalyzing ? (
+                        "Analyzing Image..."
+                      ) : (
+                        <>
+                          <Search className="mr-2 w-4 h-4" />
+                          Check Authenticity
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+                {mediaResult && (
+                  <div className="mt-8">
+                    <div className={`p-8 rounded-2xl ${mediaResult.isOriginal ? 'bg-green-500/10 border border-green-500/20' : 'bg-red-500/10 border border-red-500/20'}`}>
+                      {/* Clear Deepfake Result */}
+                      <div className="text-center mb-6">
+                        {mediaResult.isOriginal ? (
+                          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-500/20 mb-4">
+                            <CheckIcon className="w-8 h-8 text-green-400" />
+                          </div>
+                        ) : (
+                          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-500/20 mb-4">
+                            <XIcon className="w-8 h-8 text-red-400" />
+                          </div>
+                        )}
+                        
+                        <h2 className={`text-3xl font-bold mb-2 ${mediaResult.isOriginal ? 'text-green-400' : 'text-red-400'}`}>
+                          {mediaResult.isOriginal ? "AUTHENTIC MEDIA" : "DEEPFAKE DETECTED"}
+                        </h2>
+                        
+                        <p className="text-slate-300 mb-4">
+                          {mediaResult.isOriginal 
+                            ? "This image appears to be authentic and not AI-generated." 
+                            : "This image appears to be AI-generated or manipulated."}
+                        </p>
+                        
+                        <div className="flex items-center justify-center mb-6">
+                          <span className="text-lg font-medium mr-3">Confidence:</span>
+                          <span className={`text-xl font-bold ${mediaResult.isOriginal ? 'text-green-400' : 'text-red-400'}`}>
+                            {mediaResult.confidence}%
+                          </span>
+                        </div>
+                        
+                        <div className="w-full max-w-md mx-auto bg-slate-700/50 rounded-full h-4 overflow-hidden">
+                          <div 
+                            className={`h-4 rounded-full transition-all duration-1000 ease-out ${
+                              mediaResult.isOriginal ? 'bg-gradient-to-r from-green-500 to-emerald-500' : 'bg-gradient-to-r from-red-500 to-rose-500'
+                            }`}
+                            style={{ width: `${mediaResult.confidence}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                      
+                      {/* Detailed Analysis */}
+                      <div className="mt-8 pt-6 border-t border-slate-700/50">
+                        <h3 className="text-lg font-semibold text-white mb-4">Analysis Details</h3>
+                        <p className="text-slate-300 mb-4">{mediaResult.message}</p>
+                        
+                        {mediaResult.flags && mediaResult.flags.length > 0 && (
+                          <div className="mt-6">
+                            <h4 className="text-red-400 font-semibold mb-3">Potential Issues:</h4>
+                            <div className="space-y-2">
+                              {mediaResult.flags.map((flag, index) => (
+                                <div key={index} className="flex items-start text-red-300 text-sm">
+                                  <XIcon className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+                                  <span>{flag}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {mediaResult.highlights && mediaResult.highlights.length > 0 && (
+                          <div className="mt-6">
+                            <h4 className="text-green-400 font-semibold mb-3">Positive Indicators:</h4>
+                            <div className="space-y-2">
+                              {mediaResult.highlights.map((highlight, index) => (
+                                <div key={index} className="flex items-start text-green-300 text-sm">
+                                  <CheckIcon className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+                                  <span>{highlight}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </FloatingCard>
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+// Source Intelligence Page Component
+function SourceIntelligencePage({ onBack }) {
+  const [sourceUrl, setSourceUrl] = useState("");
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [result, setResult] = useState(null);
+  
+  const analyzeSource = async () => {
+    if (!sourceUrl.trim()) return;
+    setIsAnalyzing(true);
+    setResult(null);
+    
+    try {
+      console.log("Starting analysis for source URL:", sourceUrl);
+      
+      // Enhanced prompt for source credibility analysis
+      const prompt = `
+        Analyze the credibility and reputation of the following news source website: ${sourceUrl}
+        
+        Provide a detailed analysis including:
+        1. Overall credibility assessment (0-100%)
+        2. Potential red flags or issues
+        3. Positive aspects or verified facts
+        4. Any relevant information about the source's reputation
+        
+        Please format your response as a JSON object with the following structure:
+        {
+          "credibility": [number between 0-100],
+          "isReliable": [boolean],
+          "name": "[source name]",
+          "message": "[summary of your analysis]",
+          "flags": ["array of potential issues"],
+          "highlights": ["array of positive aspects"]
+        }
+      `;
+      
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${import.meta.env.VITE_GEMINI_API_KEY}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [{ text: prompt }],
+              },
+            ],
+          }),
+        }
+      );
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log("Source analysis result:", data);
+      
+      // Extract the response text
+      const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || "No response";
+      
+      // Try to parse JSON from the response
+      let analysisData;
+      try {
+        // Look for JSON in the response (it might be wrapped in markdown code blocks)
+        const jsonMatch = responseText.match(/```json\n([\s\S]*?)\n```/) || 
+                         responseText.match(/```\n([\s\S]*?)\n```/) ||
+                         responseText.match(/{[\s\S]*}/);
+        
+        if (jsonMatch) {
+          const jsonString = jsonMatch[1] || jsonMatch[0];
+          analysisData = JSON.parse(jsonString);
+        } else {
+          // Fallback: create a basic analysis from the text
+          analysisData = {
+            credibility: 50, // Default neutral score
+            isReliable: true,
+            name: new URL(sourceUrl).hostname.replace('www.', ''),
+            message: responseText,
+            flags: [],
+            highlights: []
+          };
+        }
+      } catch (e) {
+        console.error("Failed to parse source analysis response:", e);
+        // Fallback to basic analysis
+        analysisData = {
+          credibility: 50,
+          isReliable: true,
+          name: new URL(sourceUrl).hostname.replace('www.', ''),
+          message: responseText,
+          flags: [],
+          highlights: []
+        };
+      }
+      
+      setResult({
+        credibility: analysisData.credibility || 50,
+        isReliable: analysisData.isReliable || true,
+        name: analysisData.name || new URL(sourceUrl).hostname.replace('www.', ''),
+        message: analysisData.message || "Analysis completed",
+        flags: analysisData.flags || [],
+        highlights: analysisData.highlights || []
+      });
+      
+    } catch (error) {
+      console.error("Source analysis failed:", error);
+      setResult({
+        credibility: 0,
+        isReliable: false,
+        name: "Unknown Source",
+        message: "Analysis failed. Please check the URL and try again.",
+        flags: ["Analysis service unavailable"],
+        highlights: []
+      });
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+  
+  return (
+    <div className="min-h-screen bg-slate-900 text-slate-100 relative overflow-hidden">
+      {/* Animated Background */}
+      <div className="fixed inset-0 z-0">
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900"></div>
+        <div className="absolute inset-0 bg-gradient-to-tr from-purple-900/10 via-transparent to-indigo-900/10"></div>
+        <ParticleBackground />
+      </div>
+      
+      {/* Content */}
+      <div className="relative z-10">
+        {/* Header */}
+        <header className="bg-slate-900/80 backdrop-blur-2xl border-b border-slate-700/50 fixed top-0 left-0 right-0 z-40 shadow-2xl">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <Button variant="ghost" onClick={onBack}>
+                  <ArrowRight className="w-5 h-5 rotate-180 mr-2" />
+                  Back
+                </Button>
+                <h1 className="text-2xl font-bold text-white">Source Intelligence</h1>
+              </div>
+            </div>
+          </div>
+        </header>
+        
+        {/* Spacer for fixed header */}
+        <div className="h-24"></div>
+        
+        {/* Main Content */}
+        <section className="py-20 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-5xl mx-auto">
+            <div className="text-center mb-16">
+              <h3 className="text-4xl font-bold text-white mb-4">
+                Source Credibility Analysis
+              </h3>
+              <p className="text-xl text-slate-400 max-w-2xl mx-auto">
+                Enter a URL to analyze the credibility and reputation of the source
+              </p>
+            </div>
+            
+            <FloatingCard className="mb-12">
+              <div className="space-y-8">
+                {/* URL Input Area */}
+                <div className="relative transition-all duration-300">
+                  <div className={`absolute inset-0 bg-gradient-to-r from-purple-500/20 to-indigo-500/20 rounded-2xl blur-xl transition-opacity duration-300 ${sourceUrl ? 'opacity-100' : 'opacity-0'}`}></div>
+                  <div className="relative bg-slate-800/50 backdrop-blur-xl rounded-2xl border border-slate-700/50 overflow-hidden px-4">
+                    <div className="p-1">
+                      <div className={`bg-slate-900/50 rounded-xl border ${sourceUrl ? 'border-purple-500/50 shadow-lg shadow-purple-500/10' : 'border-slate-700/50'} transition-all duration-300`}>
+                        <div className="p-8">
+                          <Globe className="w-12 h-12 text-slate-500 mx-auto mb-4" />
+                          <p className="text-slate-400 mb-4">Enter a source URL to analyze its credibility and reputation</p>
+                          <input
+                            type="text"
+                            value={sourceUrl}
+                            onChange={(e) => setSourceUrl(e.target.value)}
+                            placeholder="https://example.com/news-article"
+                            className="w-full p-4 bg-transparent text-white placeholder-slate-400 border border-slate-700/50 rounded-xl focus:outline-none focus:border-purple-500/50"
+                            disabled={isAnalyzing}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2 text-sm text-slate-400">
+                    <div className="flex items-center">
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-2"></div>
+                      <span>Comprehensive source analysis</span>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={analyzeSource}
+                    disabled={!sourceUrl.trim() || isAnalyzing}
+                    loading={isAnalyzing}
+                  >
+                    {isAnalyzing ? (
+                      "Analyzing Source..."
+                    ) : (
+                      <>
+                        <Search className="mr-2 w-4 h-4" />
+                        Analyze Source
+                      </>
+                    )}
+                  </Button>
+                </div>
+                {result && (
+                  <div className="mt-8">
+                    <div className={`p-6 rounded-2xl ${result.isReliable ? 'bg-green-500/10 border border-green-500/20' : 'bg-red-500/10 border border-red-500/20'}`}>
+                      <div className="flex items-center mb-4">
+                        {result.isReliable ? (
+                          <CheckIcon className="w-6 h-6 text-green-500 mr-3" />
+                        ) : (
+                          <XIcon className="w-6 h-6 text-red-500 mr-3" />
+                        )}
+                        <h4 className="text-xl font-bold text-white">
+                          {result.isReliable ? "Reliable Source" : "Unreliable Source"}
+                        </h4>
+                      </div>
+                      <p className="text-slate-300 mb-4">{result.message}</p>
+                      
+                      <div className="mb-6">
+                        <div className="flex items-center mb-2">
+                          <span className="text-slate-400 mr-2">Credibility Score:</span>
+                          <span className="font-medium">{result.credibility}%</span>
+                        </div>
+                        <div className="w-full bg-slate-700/50 rounded-full h-3 overflow-hidden">
+                          <div 
+                            className={`h-3 rounded-full transition-all duration-1000 ease-out ${
+                              result.isReliable ? 'bg-gradient-to-r from-green-500 to-emerald-500' : 'bg-gradient-to-r from-red-500 to-rose-500'
+                            }`}
+                            style={{ width: `${result.credibility}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                      
+                      {result.flags && result.flags.length > 0 && (
+                        <div className="mt-6">
+                          <h5 className="text-red-400 font-semibold mb-3">Potential Issues:</h5>
+                          <div className="space-y-2">
+                            {result.flags.map((flag, index) => (
+                              <div key={index} className="flex items-start text-red-300 text-sm">
+                                <XIcon className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+                                <span>{flag}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {result.highlights && result.highlights.length > 0 && (
+                        <div className="mt-6">
+                          <h5 className="text-green-400 font-semibold mb-3">Positive Indicators:</h5>
+                          <div className="space-y-2">
+                            {result.highlights.map((highlight, index) => (
+                              <div key={index} className="flex items-start text-green-300 text-sm">
+                                <CheckIcon className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+                                <span>{highlight}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </FloatingCard>
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+// Trust Score Visualization Component
+function TrustScoreVisualization({ score, size = "large", showPercentage = true }) {
+  const [animatedScore, setAnimatedScore] = useState(0);
+  
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setAnimatedScore(score);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [score]);
+  
+  const radius = size === "large" ? 90 : 60;
+  const strokeWidth = size === "large" ? 12 : 8;
+  const normalizedRadius = radius - strokeWidth * 2;
+  const circumference = normalizedRadius * 2 * Math.PI;
+  const strokeDasharray = `${circumference} ${circumference}`;
+  const strokeDashoffset = circumference - (animatedScore / 100) * circumference;
+  
+  const getColor = (score) => {
+    if (score >= 80) return { stroke: "#10b981", bg: "from-green-500/20 to-emerald-500/20", text: "text-green-400" };
+    if (score >= 60) return { stroke: "#f59e0b", bg: "from-amber-500/20 to-orange-500/20", text: "text-amber-400" };
+    return { stroke: "#ef4444", bg: "from-red-500/20 to-rose-500/20", text: "text-red-400" };
+  };
+  
+  const colors = getColor(animatedScore);
+  
+  return (
+    <div className="relative flex items-center justify-center">
+      <div className={`absolute inset-0 bg-gradient-to-r ${colors.bg} rounded-full blur-xl opacity-50`}></div>
+      <svg
+        height={radius * 2}
+        width={radius * 2}
+        className="relative transform -rotate-90"
+      >
+        <circle
+          stroke="#374151"
+          fill="transparent"
+          strokeWidth={strokeWidth}
+          r={normalizedRadius}
+          cx={radius}
+          cy={radius}
+        />
+        <circle
+          stroke={colors.stroke}
+          fill="transparent"
+          strokeWidth={strokeWidth}
+          strokeDasharray={strokeDasharray}
+          style={{
+            strokeDashoffset,
+            transition: 'stroke-dashoffset 2s ease-in-out'
+          }}
+          strokeLinecap="round"
+          r={normalizedRadius}
+          cx={radius}
+          cy={radius}
+        />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="text-center">
+          {showPercentage && (
+            <div className={`${size === "large" ? "text-4xl" : "text-2xl"} font-bold text-white`}>
+              {Math.round(animatedScore)}%
+            </div>
+          )}
+          {size === "large" && showPercentage && (
+            <div className={`text-sm ${colors.text} font-medium`}>
+              Trust Score
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Main Component with Login Form
 export default function Home() {
   const [content, setContent] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState('home');
+  
+  // Login state
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
   
   // Mock data remains the same but with enhanced structure
   const [latestNews] = useState([
@@ -766,20 +1447,115 @@ export default function Home() {
     document.getElementById('analysis-section')?.scrollIntoView({ behavior: 'smooth' });
   };
   
+  // Login handler
+  const handleLogin = (e) => {
+    e.preventDefault();
+    
+    // Check credentials
+    if (username === "chirag" && password === "FakePeople") {
+      setIsLoggedIn(true);
+      setLoginError("");
+    } else {
+      setLoginError("Invalid username or password");
+    }
+  };
+  
+  // Logout handler
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setUsername("");
+    setPassword("");
+  };
+  
+  // Render different pages based on currentPage state
+  if (currentPage === 'deep-fact-analysis') {
+    return <DeepFactAnalysisPage onBack={() => setCurrentPage('home')} />;
+  }
+  
+  if (currentPage === 'media-authenticity') {
+    return <MediaAuthenticityPage onBack={() => setCurrentPage('home')} />;
+  }
+  
+  if (currentPage === 'source-intelligence') {
+    return <SourceIntelligencePage onBack={() => setCurrentPage('home')} />;
+  }
+  
+  // Default Home page
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 relative overflow-hidden">
       {/* Animated Background */}
       <div className="fixed inset-0 z-0">
         <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900"></div>
         <div className="absolute inset-0 bg-gradient-to-tr from-blue-900/10 via-transparent to-indigo-900/10"></div>
-        <ParticleBackground />
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5"></div>
       </div>
-      
-      {/* Mobile Navigation */}
-      <MobileNav isOpen={mobileNavOpen} setIsOpen={setMobileNavOpen} />
       
       {/* Content */}
       <div className="relative z-10">
+        {/* Login Form (shown when not logged in) */}
+        {!isLoggedIn && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/95 backdrop-blur-md">
+            <div className="w-full max-w-md p-0">
+              <FloatingCard className="p-8">
+                <div className="text-center mb-8">
+                  <div className="inline-flex items-center justify-center mb-6">
+                    <div className="relative">
+                      <div className="absolute inset-0 bg-blue-500/20 rounded-full blur-xl"></div>
+                      <img 
+                        src="/DeFraudAI_Logo.png" 
+                        alt="DeFraudAI Logo" 
+                        className="relative w-20 h-20 object-contain rounded-full border-2 border-blue-500/50 shadow-xl"
+                      />
+                    </div>
+                  </div>
+                  <h1 className="text-3xl font-bold text-white mb-2">Welcome to DeFraudAI</h1>
+                  <p className="text-slate-400">Please login to continue</p>
+                </div>
+                
+                <form onSubmit={handleLogin} className="space-y-6">
+                  <Input
+                    label="Username"
+                    type="text"
+                    placeholder="Enter your username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    icon={<User className="w-4 h-4" />}
+                    required
+                  />
+                  
+                  <Input
+                    label="Password"
+                    type="password"
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    icon={<Lock className="w-4 h-4" />}
+                    required
+                  />
+                  
+                  {loginError && (
+                    <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-sm text-red-300">
+                      {loginError}
+                    </div>
+                  )}
+                  
+                  <Button
+                    type="submit"
+                    size="lg"
+                    className="w-full"
+                  >
+                    Login
+                  </Button>
+                </form>
+                
+                <div className="mt-6 text-center text-sm text-slate-500">
+                  <p>Password Is Important</p>
+                </div>
+              </FloatingCard>
+            </div>
+          </div>
+        )}
+        
         {/* Enhanced Header */}
         <header className="bg-slate-900/80 backdrop-blur-2xl border-b border-slate-700/50 fixed top-0 left-0 right-0 z-40 shadow-2xl">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -788,7 +1564,7 @@ export default function Home() {
                 <div className="relative">
                   <div className="absolute inset-0 bg-blue-500/20 rounded-full blur-xl"></div>
                   <img 
-                    src="/DeFraudAI_Logo-removebg-preview.png" 
+                    src="/DeFraudAI_Logo.png" 
                     alt="DeFraudAI Logo" 
                     className="relative w-16 h-16 object-contain rounded-full border-2 border-blue-500/50 shadow-xl"
                   />
@@ -808,7 +1584,11 @@ export default function Home() {
                     </Button>
                   ))}
                 </nav>
-                <Button size="sm">Get Started</Button>
+                {isLoggedIn && (
+                  <Button variant="outline" size="sm" onClick={handleLogout}>
+                    Logout
+                  </Button>
+                )}
               </div>
               
               {/* Mobile Menu Button */}
@@ -897,89 +1677,249 @@ export default function Home() {
             </div>
             
             <FloatingCard className="mb-12">
-              <ContentInput
-                content={content}
-                onChange={setContent}
-                onAnalyze={analyzeContent}
-                isAnalyzing={isAnalyzing}
-              />
+              <div className="space-y-6">
+                <div className={`
+                  relative transition-all duration-300
+                `}>
+                  <div className={`
+                    absolute inset-0 bg-gradient-to-r from-blue-500/20 to-indigo-500/20 rounded-2xl blur-xl transition-opacity duration-300
+                  `}></div>
+                  
+                  <div className="relative bg-slate-800/50 backdrop-blur-xl rounded-2xl border border-slate-700/50 overflow-hidden">
+                    <div className="p-1">
+                      <div className={`
+                        bg-slate-900/50 rounded-xl border transition-all duration-300
+                      `}>
+                        <textarea
+                          value={content}
+                          onChange={(e) => setContent(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" ) {
+                              e.preventDefault(); // prevent newline
+                              if (!isAnalyzing) analyzeContent(); // call the analyze function
+                            }
+                          }}
+                          placeholder="Paste news articles, social media posts, or any suspicious content here for instant verification..."
+                          className="w-full h-48 p-6 bg-transparent text-white placeholder-slate-400 resize-none focus:outline-none"
+                          disabled={isAnalyzing}
+                        />
+                        
+                        <div className="flex items-center justify-between p-4 border-t border-slate-700/50">
+                          <div className="flex items-center space-x-4 text-sm text-slate-400">
+                            <span>{content.trim().split(/\s+/).filter(word => word.length > 0).length} words</span>
+                            <span className="w-1 h-1 bg-slate-600 rounded-full"></span>
+                            <span>{content.length} characters</span>
+                          </div>
+                          
+                          <div className="flex items-center space-x-3">
+                            {content.trim() && (
+                              <div className="flex items-center text-xs text-slate-500">
+                                <Shield className="w-3 h-3 mr-1" />
+                                <span>Secure analysis</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2 text-sm text-slate-400">
+                    <div className="flex items-center">
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-2"></div>
+                      <span>AI-powered verification</span>
+                    </div>
+                  </div>
+                  
+                  <Button
+                    onClick={analyzeContent}
+                    disabled={!content.trim() || isAnalyzing}
+                    loading={isAnalyzing}
+                    size="lg"
+                    className="min-w-[200px]"
+                  >
+                    {isAnalyzing ? (
+                      "Analyzing Content..."
+                    ) : (
+                      <>
+                        <Search className="mr-2 w-5 h-5" />
+                        Verify Content
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
             </FloatingCard>
             
-            {result && <EnhancedAnalysisResult result={result} />}
+            {result && (
+              <FloatingCard className="space-y-8">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                  <h3 className="text-2xl font-bold text-white">Verification Results</h3>
+                  <div className={`flex items-center px-4 py-2 rounded-full ${result.status === "success" ? "bg-green-500/20 text-green-500" : "bg-red-500/20 text-red-500"} backdrop-blur-sm`}>
+                    {result.status === "success" ? 
+                      <CheckCircle className="w-6 h-6 mr-2" /> : 
+                      <XCircle className="w-6 h-6 mr-2" />
+                    }
+                    <span className="text-sm font-semibold capitalize">{result.status}</span>
+                  </div>
+                </div>
+                
+                {/* Summary */}
+                <div className="bg-slate-800/30 backdrop-blur-sm rounded-2xl p-8 border border-slate-700/50">
+                  <h4 className="text-xl font-semibold text-white mb-4">Analysis Summary</h4>
+                  <p className="text-slate-300 leading-relaxed mb-6">{result.message}</p>
+                  
+                  {/* Quick Stats */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-slate-900/50 rounded-xl p-4 text-center">
+                      <div className="text-2xl font-bold text-blue-400">{result.sources.length}</div>
+                      <div className="text-xs text-slate-400">Sources Found</div>
+                    </div>
+                    <div className="bg-slate-900/50 rounded-xl p-4 text-center">
+                      <div className="text-2xl font-bold text-purple-400">
+                        {result.analysis.flags?.length || 0}
+                      </div>
+                      <div className="text-xs text-slate-400">Issues Detected</div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Detailed Analysis */}
+                {result.analysis.flags && result.analysis.flags.length > 0 && (
+                  <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6">
+                    <h5 className="text-red-400 font-semibold mb-4 flex items-center">
+                      <AlertTriangle className="w-5 h-5 mr-2" />
+                      Potential Issues Detected
+                    </h5>
+                    <div className="space-y-3">
+                      {result.analysis.flags.map((flag, index) => (
+                        <div key={index} className="flex items-start text-red-300 text-sm">
+                          <XCircle className="w-4 h-4 mr-3 mt-0.5 flex-shrink-0" />
+                          <span>{flag}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {result.analysis.highlights && result.analysis.highlights.length > 0 && (
+                  <div className="bg-green-500/10 border border-green-500/20 rounded-2xl p-6">
+                    <h5 className="text-green-400 font-semibold mb-4 flex items-center">
+                      <CheckCircle className="w-5 h-5 mr-2" />
+                      Positive Indicators
+                    </h5>
+                    <div className="space-y-3">
+                      {result.analysis.highlights.map((highlight, index) => (
+                        <div key={index} className="flex items-start text-green-300 text-sm">
+                          <CheckCircle className="w-4 h-4 mr-3 mt-0.5 flex-shrink-0" />
+                          <span>{highlight}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </FloatingCard>
+            )}
           </div>
         </section>
         
         {/* Enhanced Features Section */}
-        <section className="py-20 px-4 sm:px-6 lg:px-8">
+        <section className="py-0 px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto">
             <div className="text-center mb-20">
               <h3 className="text-4xl font-bold text-white mb-6">
                 Advanced Verification Technology
               </h3>
               <p className="text-xl text-slate-400 max-w-3xl mx-auto">
-                Multi-layered AI analysis combining natural language processing, 
+                Multi-layered AI analysis combining natural language processing,
                 source verification, and real-time fact-checking
               </p>
             </div>
-            
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-  {[
-    {
-      icon: Search,
-      title: "Deep Fact Analysis",
-      description: "Advanced NLP algorithms cross-reference claims against verified databases and trusted sources worldwide.",
-      features: ["Real-time fact checking", "Source credibility scoring", "Bias detection"],
-      color: "blue"
-    },
-    {
-      icon: Upload,
-      title: "Media Authenticity",
-      description: "Cutting-edge deepfake detection and image manipulation analysis using computer vision.",
-      features: ["Deepfake detection", "Image forensics", "Video authenticity"],
-      color: "green"
-    },
-    {
-      icon: Globe,
-      title: "Source Intelligence",
-      description: "Comprehensive source tracking and reputation analysis with historical accuracy metrics.",
-      features: ["Source reputation tracking", "Historical accuracy analysis", "Network mapping"],
-      color: "purple"
-    }
-  ].map((feature, index) => {
-    const Icon = feature.icon;
-    return (
-      <FloatingCard 
-        key={index} 
-        delay={index * 150} 
-        className="h-full flex flex-col justify-between"
-      >
-        <div>
-          <div className={`w-16 h-16 bg-${feature.color}-500/10 rounded-2xl flex items-center justify-center mb-8 border border-${feature.color}-500/20`}>
-            <Icon className={`w-8 h-8 text-${feature.color}-400`} />
-          </div>
-          
-          <h4 className="text-2xl font-bold text-white mb-4">{feature.title}</h4>
-          <p className="text-slate-300 leading-relaxed mb-8">{feature.description}</p>
-          
-          <div className="space-y-3 mb-8">
-            {feature.features.map((item, i) => (
-              <div key={i} className="flex items-center text-sm text-slate-400">
-                <CheckCircle className={`w-4 h-4 mr-3 text-${feature.color}-400`} />
-                {item}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Button pinned at bottom for uniformity */}
-        <Button variant="outline" className="w-full mt-auto">
-          Experience Now <ArrowRight className="ml-2 w-4 h-4" />
-        </Button>
-      </FloatingCard>
-    );
-  })}
-</div>
-
+              {[
+                {
+                  icon: Search,
+                  title: "Deep Fact Analysis",
+                  description:
+                    "Advanced NLP algorithms cross-reference claims against verified databases and trusted sources worldwide.",
+                  features: [
+                    "Real-time fact checking",
+                    "Source credibility scoring",
+                    "Bias detection",
+                  ],
+                  color: "blue",
+                  page: "deep-fact-analysis"
+                },
+                {
+                  icon: Upload,
+                  title: "Media Authenticity",
+                  description:
+                    "Cutting-edge deepfake detection and image manipulation analysis using computer vision.",
+                  features: [
+                    "Deepfake detection",
+                    "Image forensics",
+                    "Video authenticity",
+                  ],
+                  color: "green",
+                  page: "media-authenticity"
+                },
+                {
+                  icon: Globe,
+                  title: "Source Intelligence",
+                  description:
+                    "Comprehensive source tracking and reputation analysis with historical accuracy metrics.",
+                  features: [
+                    "Source reputation tracking",
+                    "Historical accuracy analysis",
+                    "Network mapping",
+                  ],
+                  color: "purple",
+                  page: "source-intelligence"
+                },
+              ].map((feature, index) => {
+                const Icon = feature.icon;
+                return (
+                  <FloatingCard
+                    key={index}
+                    delay={index * 150}
+                    className="h-[500px] flex flex-col"
+                  >
+                    <div className={`w-16 h-16 bg-${feature.color}-500/10 rounded-2xl flex items-center justify-center mb-8 border border-${feature.color}-500/20`}>
+                      <Icon className={`w-8 h-8 text-${feature.color}-400`} />
+                    </div>
+                    <h4 className="text-2xl font-bold text-white mb-4">
+                      {feature.title}
+                    </h4>
+                    <p className="text-slate-300 leading-relaxed mb-8">
+                      {feature.description}
+                    </p>
+                    <div className="space-y-3 mb-8">
+                      {feature.features.map((item, i) => (
+                        <div
+                          key={i}
+                          className="flex items-center text-sm text-slate-400"
+                        >
+                          <CheckCircle
+                            className={`w-4 h-4 mr-3 text-${feature.color}-400`}
+                          />
+                          {item}
+                        </div>
+                      ))}
+                    </div>
+                    <Button
+                      variant="outline"
+                      className="w-full mt-auto"
+                      onClick={() => setCurrentPage(feature.page)}
+                    >
+                      Experience Now <ArrowRight className="ml-2 w-4 h-4" />
+                    </Button>
+                  </FloatingCard>
+                );
+              })}
+            </div>
           </div>
         </section>
         
@@ -1129,7 +2069,7 @@ export default function Home() {
                   <div className="relative">
                     <div className="absolute inset-0 bg-blue-500/20 rounded-full blur-xl"></div>
                     <img 
-                      src="/DeFraudAI_Logo-removebg-preview.png" 
+                      src="/DeFraudAI_Logo.png" 
                       alt="DeFraudAI Logo" 
                       className="relative w-14 h-14 object-contain rounded-full border-2 border-blue-500/50"
                     />
