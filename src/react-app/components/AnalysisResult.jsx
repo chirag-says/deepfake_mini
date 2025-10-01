@@ -1,3 +1,4 @@
+// AnalysisResult.jsx
 import { CheckCircle, AlertTriangle, XCircle, ExternalLink, Clock, Shield } from "lucide-react";
 import PropTypes from "prop-types";
 
@@ -50,7 +51,9 @@ export default function AnalysisResult({ result }) {
             {getStatusIcon()}
             <div>
               <h3 className="text-lg font-semibold text-slate-900 capitalize">
-                {result.status === "error" ? "Analysis Error" : result.status}
+                {result.status === "error" ? "Analysis Error" : 
+                 result.status === "verified" ? "Verified" : 
+                 result.status === "false" ? "False Information" : result.status}
               </h3>
               <p className="text-slate-600 text-sm">{result.message}</p>
             </div>
@@ -66,7 +69,7 @@ export default function AnalysisResult({ result }) {
             </div>
           )}
         </div>
-
+        
         {/* Trust Score Bar */}
         {result.status !== "error" && (
           <div className="w-full bg-gray-200 rounded-full h-3 mb-6">
@@ -82,7 +85,54 @@ export default function AnalysisResult({ result }) {
             ></div>
           </div>
         )}
-
+        
+        {/* Technical Indicators (for media analysis) */}
+        {result.technicalIndicators && (
+          <div className="mb-6">
+            <h4 className="text-md font-medium text-slate-800 mb-3">Technical Analysis</h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-slate-600">Inconsistencies</span>
+                  <span className="font-medium">{result.technicalIndicators.inconsistencies}%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div
+                    className="h-2 rounded-full bg-gradient-to-r from-red-500 to-red-600"
+                    style={{ width: `${result.technicalIndicators.inconsistencies}%` }}
+                  ></div>
+                </div>
+              </div>
+              
+              <div>
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-slate-600">Artifacts</span>
+                  <span className="font-medium">{result.technicalIndicators.artifacts}%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div
+                    className="h-2 rounded-full bg-gradient-to-r from-yellow-500 to-yellow-600"
+                    style={{ width: `${result.technicalIndicators.artifacts}%` }}
+                  ></div>
+                </div>
+              </div>
+              
+              <div>
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-slate-600">Metadata</span>
+                  <span className="font-medium">{result.technicalIndicators.metadata}%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div
+                    className="h-2 rounded-full bg-gradient-to-r from-blue-500 to-blue-600"
+                    style={{ width: `${result.technicalIndicators.metadata}%` }}
+                  ></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        
         {/* Analysis Details */}
         {result.analysis && (
           <div className="bg-white/60 rounded-xl p-4 space-y-3">
@@ -90,7 +140,7 @@ export default function AnalysisResult({ result }) {
               <Clock className="w-3 h-3 mr-1" />
               Analyzed on {new Date(result.analysis.checkedAt).toLocaleString()}
             </div>
-
+            
             {result.analysis.keywords?.length > 0 && (
               <div>
                 <div className="text-sm font-medium text-slate-700 mb-2">Key Topics</div>
@@ -106,12 +156,12 @@ export default function AnalysisResult({ result }) {
                 </div>
               </div>
             )}
-
-            {result.analysis.flags?.length > 0 && (
+            
+            {result.flags?.length > 0 && (
               <div>
                 <div className="text-sm font-medium text-slate-700 mb-2">Analysis Flags</div>
                 <div className="space-y-1">
-                  {result.analysis.flags.map((flag, index) => (
+                  {result.flags.map((flag, index) => (
                     <div key={index} className="flex items-center text-xs text-slate-600">
                       <AlertTriangle className="w-3 h-3 mr-2 text-yellow-500" />
                       {flag}
@@ -120,10 +170,24 @@ export default function AnalysisResult({ result }) {
                 </div>
               </div>
             )}
+            
+            {result.highlights?.length > 0 && (
+              <div>
+                <div className="text-sm font-medium text-slate-700 mb-2">Positive Indicators</div>
+                <div className="space-y-1">
+                  {result.highlights.map((highlight, index) => (
+                    <div key={index} className="flex items-center text-xs text-slate-600">
+                      <CheckCircle className="w-3 h-3 mr-2 text-green-500" />
+                      {highlight}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
-
+      
       {/* Sources */}
       {result.sources?.length > 0 && (
         <div className="bg-white rounded-2xl p-6 border border-slate-200">
@@ -178,6 +242,15 @@ AnalysisResult.propTypes = {
     status: PropTypes.string.isRequired,
     message: PropTypes.string,
     trustScore: PropTypes.number,
+    confidence: PropTypes.number,
+    isOriginal: PropTypes.bool,
+    technicalIndicators: PropTypes.shape({
+      inconsistencies: PropTypes.number,
+      artifacts: PropTypes.number,
+      metadata: PropTypes.number
+    }),
+    flags: PropTypes.arrayOf(PropTypes.string),
+    highlights: PropTypes.arrayOf(PropTypes.string),
     analysis: PropTypes.shape({
       checkedAt: PropTypes.string,
       keywords: PropTypes.arrayOf(PropTypes.string),

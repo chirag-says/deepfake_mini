@@ -1,8 +1,11 @@
+// src/react-app/pages/SourceIntelligencePage.jsx
 import { useState } from "react";
-import { Search, Upload, Globe, CheckCircle, Shield, ArrowRight, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { FloatingCard } from "@/components/FloatingCard"; 
-import EnhancedAnalysisResult from "@/components/EnhancedAnalysisResult";
+import { Search, ArrowRight, CheckCircle as CheckIcon, XCircle as XIcon, Globe } from "lucide-react";
+import Button from "../../shared/Button";
+import FloatingCard from "../../shared/FloatingCard";
+import ParticleBackground from "../../shared/ParticleBackground";
+
+// Rest of the SourceIntelligencePage component remains the same...
 
 export default function EnhancedFeaturesSection() {
   const [activeFeature, setActiveFeature] = useState(null);

@@ -4,6 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "dependencies": {
+    "@fortawesome/free-solid-svg-icons": "^7.0.0",
+    "@fortawesome/react-fontawesome": "^3.0.1",
     "@google/generative-ai": "^0.24.1",
     "@hono/zod-validator": "^0.5.0",
     "@react-spring/web": "^10.0.1",

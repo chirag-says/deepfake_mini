@@ -1,0 +1,9 @@
+tensorflow
+numpy
+matplotlib
+scikit-learn
+opencv-python
+dlib
+flask
+cors
+flask_cors
