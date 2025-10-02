@@ -15,6 +15,7 @@ import {
   parseAnalysisResponse,
   calculateTrustScore,
 } from "../shared/utils/analysis";
+import { generateFallbackFactAnalysis } from "../shared/utils/localContentAnalysis";
 import { callGemini } from "../shared/utils/gemini";
 
 const INITIAL_RESULT = {
@@ -28,6 +29,8 @@ const INITIAL_RESULT = {
     factualAccuracy: 0,
     bias: 0,
     sourceQuality: 0,
+    keywords: [],
+    checkedAt: new Date().toISOString(),
   },
 };
 
@@ -99,22 +102,41 @@ export default function DeepFactAnalysis() {
         ) ||
         attemptedModels.at(-1) ||
         "gemini-1.0-pro";
+
+      const fallback = generateFallbackFactAnalysis(content);
+      const serviceHints = [];
+      if (isConfigError) {
+        serviceHints.push(
+          "Gemini API key missing – update your .env with VITE_GEMINI_API_KEY"
+        );
+      } else if (isModelMissing) {
+        serviceHints.push(
+          `Gemini model unavailable for this key. Enable gemini-1.5 access or set VITE_GEMINI_MODEL_NAME to ${suggestedModel}.`
+        );
+      } else if (error instanceof Error) {
+        serviceHints.push(`Remote analysis error: ${error.message}`);
+      } else {
+        serviceHints.push("Remote analysis error: Unknown issue");
+      }
+
+      const mergedFlags = [
+        ...(fallback.analysis.flags || []),
+        ...serviceHints,
+      ];
+
       setResult({
-        trustScore: 0,
-        status: "error",
-        message: isConfigError
-          ? "Gemini API key is missing. Update your .env with VITE_GEMINI_API_KEY."
-          : isModelMissing
-          ? `Gemini model not available for this API key. Enable gemini-1.5-flash in Google AI Studio or set VITE_GEMINI_MODEL_NAME to a model you can access (e.g., ${suggestedModel}).`
-          : (error instanceof Error && error.message) ||
-            "Analysis failed. Please try again.",
-        sources: [],
+        trustScore: fallback.trustScore,
+        status: fallback.status,
+        message: `${fallback.message} (AI fallback active)`,
+        sources: fallback.sources,
         analysis: {
-          flags: ["Analysis service unavailable"],
-          highlights: [],
-          factualAccuracy: 0,
-          bias: 0,
-          sourceQuality: 0,
+          flags: mergedFlags,
+          highlights: fallback.analysis.highlights,
+          factualAccuracy: fallback.analysis.factualAccuracy,
+          bias: fallback.analysis.bias,
+          sourceQuality: fallback.analysis.sourceQuality,
+          keywords: fallback.analysis.keywords,
+          checkedAt: fallback.analysis.checkedAt,
         },
       });
     } finally {

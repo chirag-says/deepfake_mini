@@ -251,7 +251,7 @@ export default function TeamDetails() {
                     partnering or contributing research? Reach out and
                     let&apos;s align on impact.
                   </p>
-                  <Button as="a" href="mailto:hello@defraud.ai">
+                  <Button as="a" href="mailto:xkyzerop@gmail.com">
                     <Users className="w-4 h-4 mr-2" /> Partner with Us
                   </Button>
                 </div>

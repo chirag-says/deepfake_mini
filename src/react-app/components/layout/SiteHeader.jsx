@@ -1,19 +1,31 @@
 import { useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { Menu, X } from "lucide-react";
+import {
+  SignedIn,
+  SignedOut,
+  SignInButton,
+  SignUpButton,
+  UserButton,
+} from "@clerk/clerk-react";
 import Button from "../common/Button";
-import { useAuth } from "../../shared/context/AuthContext";
 
-const navItems = [
-  { label: "Home", to: "/" },
+const signedInNav = [
+  { label: "Workspace", to: "/app" },
   { label: "Verify Content", to: "/analysis" },
   { label: "Media Authenticity", to: "/media-authenticity" },
   { label: "Source Intelligence", to: "/source-intelligence" },
   { label: "About", to: "/team" },
 ];
 
+const signedOutNav = [
+  { label: "Mission", to: "/#mission" },
+  { label: "Why Choose Us", to: "/#why-us" },
+  { label: "Exclusives", to: "/#exclusives" },
+  { label: "Team", to: "/team" },
+];
+
 export default function SiteHeader() {
-  const { isLoggedIn, logout } = useAuth();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const toggleMobileNav = () => setMobileNavOpen((prev) => !prev);
@@ -42,27 +54,54 @@ export default function SiteHeader() {
             </Link>
 
             <div className="hidden md:flex items-center space-x-6">
-              <nav className="flex space-x-2">
-                {navItems.map((item) => (
-                  <NavLink
-                    key={item.to}
-                    to={item.to}
-                    onClick={closeMobileNav}
-                    className={({ isActive }) =>
-                      `text-slate-300 hover:text-white px-3 py-2 rounded-xl transition-colors ${
-                        isActive ? "bg-blue-500/20 text-white" : ""
-                      }`
-                    }
-                  >
-                    {item.label}
-                  </NavLink>
-                ))}
-              </nav>
-              {isLoggedIn && (
-                <Button variant="outline" size="sm" onClick={logout}>
-                  Logout
-                </Button>
-              )}
+              <SignedIn>
+                <nav className="flex space-x-2">
+                  {signedInNav.map((item) => (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      onClick={closeMobileNav}
+                      className={({ isActive }) =>
+                        `text-slate-300 hover:text-white px-3 py-2 rounded-xl transition-colors ${
+                          isActive ? "bg-blue-500/20 text-white" : ""
+                        }`
+                      }
+                    >
+                      {item.label}
+                    </NavLink>
+                  ))}
+                </nav>
+                <UserButton afterSignOutUrl="/" appearance={{ baseTheme: "dark" }} />
+              </SignedIn>
+
+              <SignedOut>
+                <nav className="flex space-x-2">
+                  {signedOutNav.map((item) => (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      onClick={closeMobileNav}
+                      className={({ isActive }) =>
+                        `text-slate-300 hover:text-white px-3 py-2 rounded-xl transition-colors ${
+                          isActive ? "bg-blue-500/20 text-white" : ""
+                        }`
+                      }
+                    >
+                      {item.label}
+                    </NavLink>
+                  ))}
+                </nav>
+                <div className="flex items-center gap-3">
+                  <SignInButton mode="modal" afterSignInUrl="/app" afterSignUpUrl="/app">
+                    <Button variant="outline" size="sm">
+                      Sign in
+                    </Button>
+                  </SignInButton>
+                  <SignUpButton mode="modal" afterSignUpUrl="/app" afterSignInUrl="/app">
+                    <Button size="sm">Get started</Button>
+                  </SignUpButton>
+                </div>
+              </SignedOut>
             </div>
 
             <Button
@@ -86,37 +125,62 @@ export default function SiteHeader() {
       {mobileNavOpen && (
         <div className="md:hidden fixed inset-0 z-30 bg-slate-900/95 backdrop-blur-xl">
           <div className="max-w-7xl mx-auto px-6 py-8 space-y-6">
-            <nav className="space-y-3">
-              {navItems.map((item) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  onClick={closeMobileNav}
-                  className={({ isActive }) =>
-                    `block text-lg font-medium px-4 py-3 rounded-xl transition-colors ${
-                      isActive
-                        ? "bg-blue-500/20 text-white"
-                        : "text-slate-300 hover:text-white"
-                    }`
-                  }
-                >
-                  {item.label}
-                </NavLink>
-              ))}
-            </nav>
+            <SignedIn>
+              <nav className="space-y-3">
+                {signedInNav.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    onClick={closeMobileNav}
+                    className={({ isActive }) =>
+                      `block text-lg font-medium px-4 py-3 rounded-xl transition-colors ${
+                        isActive
+                          ? "bg-blue-500/20 text-white"
+                          : "text-slate-300 hover:text-white"
+                      }`
+                    }
+                  >
+                    {item.label}
+                  </NavLink>
+                ))}
+              </nav>
 
-            {isLoggedIn && (
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => {
-                  logout();
-                  closeMobileNav();
-                }}
-              >
-                Logout
-              </Button>
-            )}
+              <div className="pt-4">
+                <UserButton afterSignOutUrl="/" appearance={{ baseTheme: "dark" }} />
+              </div>
+            </SignedIn>
+
+            <SignedOut>
+              <nav className="space-y-3">
+                {signedOutNav.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    onClick={closeMobileNav}
+                    className={({ isActive }) =>
+                      `block text-lg font-medium px-4 py-3 rounded-xl transition-colors ${
+                        isActive
+                          ? "bg-blue-500/20 text-white"
+                          : "text-slate-300 hover:text-white"
+                      }`
+                    }
+                  >
+                    {item.label}
+                  </NavLink>
+                ))}
+              </nav>
+
+              <div className="grid grid-cols-1 gap-3 pt-6">
+                <SignInButton mode="modal" afterSignInUrl="/app" afterSignUpUrl="/app">
+                  <Button variant="outline" className="w-full">
+                    Sign in
+                  </Button>
+                </SignInButton>
+                <SignUpButton mode="modal" afterSignUpUrl="/app" afterSignInUrl="/app">
+                  <Button className="w-full">Create account</Button>
+                </SignUpButton>
+              </div>
+            </SignedOut>
           </div>
         </div>
       )}

@@ -8,6 +8,7 @@ import {
   Link as LinkIcon,
   ListChecks,
   Search,
+  Shield,
   TrendingUp,
 } from "lucide-react";
 import SiteHeader from "../components/layout/SiteHeader";
@@ -15,6 +16,58 @@ import ParticleBackground from "../components/common/ParticleBackground";
 import FloatingCard from "../components/common/FloatingCard";
 import Button from "../components/common/Button";
 import { callGemini } from "../shared/utils/gemini";
+
+const normalizeList = (value) => {
+  if (!value) return [];
+  const arrayValue = Array.isArray(value) ? value : [value];
+
+  return arrayValue
+    .filter((item) => item !== null && item !== undefined)
+    .map((item) => {
+      if (typeof item === "string") return item.trim();
+      if (typeof item === "number" || typeof item === "boolean") {
+        return String(item);
+      }
+
+      if (typeof item === "object") {
+        if (
+          Array.isArray(item) &&
+          item.length === 1 &&
+          typeof item[0] === "string"
+        ) {
+          return item[0];
+        }
+
+        if (item?.text) {
+          return String(item.text);
+        }
+
+        try {
+          return JSON.stringify(item);
+        } catch (error) {
+          console.warn("Failed to stringify value", error);
+          return "[unreadable entry]";
+        }
+      }
+
+      return "[unknown entry]";
+    })
+    .filter(Boolean);
+};
+
+const formatText = (value, fallback = "Unknown") => {
+  if (value === null || value === undefined || value === "") return fallback;
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean")
+    return String(value);
+
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch (error) {
+    console.warn("Failed to stringify summary", error);
+    return fallback;
+  }
+};
 
 export default function SourceIntelligence() {
   const [sourceUrl, setSourceUrl] = useState("");
@@ -212,57 +265,60 @@ Return JSON with keys score, trustSignals[], risks[], summary, recency, recommen
                   <div className="md:col-span-3 bg-slate-900/60 border border-slate-700/40 rounded-2xl p-6">
                     <div className="flex items-center text-sm text-slate-400 mb-2">
                       <Clock className="w-4 h-4 mr-2" /> Last indexed:{" "}
-                      {result.recency || "Unknown"}
+                      {formatText(result.recency)}
                     </div>
                     <p className="text-slate-200 text-sm leading-relaxed">
-                      {result.summary}
+                      {formatText(result.summary, "No summary available")}
                     </p>
                   </div>
                 </div>
 
-                {result.trustSignals?.length > 0 && (
+                {normalizeList(result.trustSignals).length > 0 && (
                   <div className="bg-green-500/10 border border-green-500/20 rounded-2xl p-6">
                     <h3 className="text-green-300 font-semibold mb-3 flex items-center">
                       <CheckCircle className="w-5 h-5 mr-2" /> Trust Signals
                     </h3>
                     <ul className="space-y-2 text-sm text-green-200">
-                      {result.trustSignals.map((signal) => (
-                        <li key={signal} className="flex items-start">
+                      {normalizeList(result.trustSignals).map((signal) => (
+                        <li
+                          key={signal}
+                          className="flex items-start break-words"
+                        >
                           <CheckCircle className="w-4 h-4 mr-2 mt-0.5" />
-                          {signal}
+                          <span>{signal}</span>
                         </li>
                       ))}
                     </ul>
                   </div>
                 )}
 
-                {result.risks?.length > 0 && (
+                {normalizeList(result.risks).length > 0 && (
                   <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-6">
                     <h3 className="text-amber-300 font-semibold mb-3 flex items-center">
                       <AlertTriangle className="w-5 h-5 mr-2" /> Risk Factors
                     </h3>
                     <ul className="space-y-2 text-sm text-amber-200">
-                      {result.risks.map((risk) => (
-                        <li key={risk} className="flex items-start">
+                      {normalizeList(result.risks).map((risk) => (
+                        <li key={risk} className="flex items-start break-words">
                           <AlertTriangle className="w-4 h-4 mr-2 mt-0.5" />
-                          {risk}
+                          <span>{risk}</span>
                         </li>
                       ))}
                     </ul>
                   </div>
                 )}
 
-                {result.recommendations?.length > 0 && (
+                {normalizeList(result.recommendations).length > 0 && (
                   <div className="bg-slate-900/60 border border-slate-700/40 rounded-2xl p-6">
                     <h3 className="text-slate-200 font-semibold mb-3 flex items-center">
-                      <Shield className="w-5 h-5 mr-2 text-slate-400" />{" "}
+                      <Shield className="w-5 h-5 mr-2 text-slate-400" />
                       Recommended Verification Steps
                     </h3>
                     <ul className="space-y-2 text-sm text-slate-300">
-                      {result.recommendations.map((recommendation) => (
-                        <li key={recommendation} className="flex items-start">
+                      {normalizeList(result.recommendations).map((item) => (
+                        <li key={item} className="flex items-start break-words">
                           <Shield className="w-4 h-4 mr-2 mt-0.5 text-slate-400" />
-                          {recommendation}
+                          <span>{item}</span>
                         </li>
                       ))}
                     </ul>

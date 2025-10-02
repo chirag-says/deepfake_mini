@@ -298,7 +298,10 @@
         });
 
         // Service Worker registration (if available)
-        if ('serviceWorker' in navigator && 'production' === 'production') {
+        const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+        const isSecureContext = window.location.protocol === 'https:' || window.location.hostname === 'localhost';
+
+        if ('serviceWorker' in navigator && !isLocalhost && isSecureContext) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/sw.js')
                     .then(registration => {
