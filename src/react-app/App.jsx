@@ -10,6 +10,7 @@ import RegisterPage from "./pages/Register";
 import MissionPage from "./pages/Mission";
 import WhyChooseUsPage from "./pages/WhyChooseUs";
 import ExclusivesPage from "./pages/Exclusives";
+import Dashboard from "./pages/Dashboard";
 import ProtectedRoute from "./shared/components/ProtectedRoute";
 
 export default function App() {
@@ -27,6 +28,14 @@ export default function App() {
           element={(
             <ProtectedRoute>
               <HomePage />
+            </ProtectedRoute>
+          )}
+        />
+        <Route
+          path="/dashboard"
+          element={(
+            <ProtectedRoute>
+              <Dashboard />
             </ProtectedRoute>
           )}
         />

@@ -12,6 +12,7 @@ import Button from "../common/Button";
 
 const signedInNav = [
   { label: "Workspace", to: "/app" },
+  { label: "Dashboard", to: "/dashboard" },
   { label: "Verify Content", to: "/analysis" },
   { label: "Media Authenticity", to: "/media-authenticity" },
   { label: "Source Intelligence", to: "/source-intelligence" },
@@ -62,8 +63,7 @@ export default function SiteHeader() {
                       to={item.to}
                       onClick={closeMobileNav}
                       className={({ isActive }) =>
-                        `text-slate-300 hover:text-white px-3 py-2 rounded-xl transition-colors ${
-                          isActive ? "bg-blue-500/20 text-white" : ""
+                        `text-slate-300 hover:text-white px-3 py-2 rounded-xl transition-colors ${isActive ? "bg-blue-500/20 text-white" : ""
                         }`
                       }
                     >
@@ -82,8 +82,7 @@ export default function SiteHeader() {
                       to={item.to}
                       onClick={closeMobileNav}
                       className={({ isActive }) =>
-                        `text-slate-300 hover:text-white px-3 py-2 rounded-xl transition-colors ${
-                          isActive ? "bg-blue-500/20 text-white" : ""
+                        `text-slate-300 hover:text-white px-3 py-2 rounded-xl transition-colors ${isActive ? "bg-blue-500/20 text-white" : ""
                         }`
                       }
                     >
@@ -133,10 +132,9 @@ export default function SiteHeader() {
                     to={item.to}
                     onClick={closeMobileNav}
                     className={({ isActive }) =>
-                      `block text-lg font-medium px-4 py-3 rounded-xl transition-colors ${
-                        isActive
-                          ? "bg-blue-500/20 text-white"
-                          : "text-slate-300 hover:text-white"
+                      `block text-lg font-medium px-4 py-3 rounded-xl transition-colors ${isActive
+                        ? "bg-blue-500/20 text-white"
+                        : "text-slate-300 hover:text-white"
                       }`
                     }
                   >
@@ -158,10 +156,9 @@ export default function SiteHeader() {
                     to={item.to}
                     onClick={closeMobileNav}
                     className={({ isActive }) =>
-                      `block text-lg font-medium px-4 py-3 rounded-xl transition-colors ${
-                        isActive
-                          ? "bg-blue-500/20 text-white"
-                          : "text-slate-300 hover:text-white"
+                      `block text-lg font-medium px-4 py-3 rounded-xl transition-colors ${isActive
+                        ? "bg-blue-500/20 text-white"
+                        : "text-slate-300 hover:text-white"
                       }`
                     }
                   >

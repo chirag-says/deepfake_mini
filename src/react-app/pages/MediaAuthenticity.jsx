@@ -10,6 +10,7 @@ import {
   XCircle,
   ScanEye,
   Info,
+  Shield,
 } from "lucide-react";
 import SiteHeader from "../components/layout/SiteHeader";
 import ParticleBackground from "../components/common/ParticleBackground";
@@ -18,6 +19,7 @@ import Button from "../components/common/Button";
 import { callGemini } from "../shared/utils/gemini";
 import { extractVideoFrames } from "../shared/utils/videoProcessing";
 import { generateELA } from "../shared/utils/elaProcessing";
+import { saveAnalysisToHistory } from "../shared/utils/historyStorage";
 
 const DEFAULT_RESULT = null;
 
@@ -27,6 +29,7 @@ export default function MediaAuthenticity() {
   const [mediaType, setMediaType] = useState(null); // 'image' | 'video' | 'audio'
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState(DEFAULT_RESULT);
+  const [localResult, setLocalResult] = useState(null);
   const [elaResult, setElaResult] = useState(null);
   const [isElaProcessing, setIsElaProcessing] = useState(false);
 
@@ -78,6 +81,22 @@ export default function MediaAuthenticity() {
     }
   };
 
+  const analyzeLocalImage = async (file) => {
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("http://localhost:8000/analyze-image", {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) throw new Error("Server error");
+      return await res.json();
+    } catch (e) {
+      console.warn("Local backend offline", e);
+      return { status: "offline", error: e.message };
+    }
+  };
+
   const analyzeMedia = async () => {
     if (!mediaFile) return;
 
@@ -85,13 +104,55 @@ export default function MediaAuthenticity() {
     const cacheKey = `${mediaFile.name}-${mediaFile.size}-${mediaFile.lastModified}`;
     if (resultsCache.current.has(cacheKey)) {
       setResult(resultsCache.current.get(cacheKey));
+      // Note: We aren't caching localResult yet for simplicity, or we could add it to the cache object
       return;
     }
 
     setIsAnalyzing(true);
     setResult(DEFAULT_RESULT);
+    setLocalResult(null); // Reset local result
 
     try {
+      // 1. Start Local Analysis (Fire & Forget/Parallel)
+      if (mediaType === "image") {
+        analyzeLocalImage(mediaFile).then(setLocalResult);
+      } else if (mediaType === "video") {
+        // For video, we extract frames and check each one
+        extractVideoFrames(mediaFile, 5).then(async (frames) => {
+          let fakeSum = 0;
+          let realSum = 0;
+          let frameCount = 0;
+
+          for (const base64Frame of frames) {
+            // Convert base64 to blob for upload
+            const res = await fetch(`data:image/jpeg;base64,${base64Frame}`);
+            const blob = await res.blob();
+            const file = new File([blob], "frame.jpg", { type: "image/jpeg" });
+
+            const result = await analyzeLocalImage(file);
+            if (result && result.probabilities) {
+              fakeSum += result.probabilities.fake;
+              realSum += result.probabilities.real;
+              frameCount++;
+            }
+          }
+
+          if (frameCount > 0) {
+            const avgFake = fakeSum / frameCount;
+            const avgReal = realSum / frameCount;
+            setLocalResult({
+              is_fake: avgFake > avgReal,
+              probabilities: {
+                fake: Math.round(avgFake),
+                real: Math.round(avgReal)
+              },
+              device_used: 'Video Frame Ensemble',
+              status: 'success'
+            });
+          }
+        });
+      }
+
       let contentParts = [];
       let prompt = "";
 
@@ -288,6 +349,14 @@ export default function MediaAuthenticity() {
 
       setResult(finalResult);
       resultsCache.current.set(cacheKey, finalResult);
+
+      // Save to history
+      saveAnalysisToHistory({
+        type: 'media',
+        fileName: mediaFile?.name || 'Unknown file',
+        mediaType: mediaType,
+        result: finalResult,
+      });
 
     } catch (error) {
       console.error("Media analysis failed", error);
@@ -495,6 +564,91 @@ export default function MediaAuthenticity() {
                       : "Manipulation Detected"}
                   </div>
                 </div>
+
+                {localResult && (
+                  <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-5 mb-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-white font-semibold flex items-center">
+                        <ScanEye className="w-5 h-5 mr-2 text-cyan-400" />
+                        Local Model Analysis (Hugging Face ViT)
+                      </h3>
+                      {localResult.status === 'offline' ? (
+                        <span className="text-xs bg-red-500/20 text-red-300 px-2 py-1 rounded">Backend Offline</span>
+                      ) : (
+                        <span className={`text-xs px-2 py-1 rounded font-bold ${localResult.is_fake ? "bg-red-500/20 text-red-300" : "bg-green-500/20 text-green-300"}`}>
+                          {localResult.is_fake ? "FAKE DETECTED" : "REAL"}
+                        </span>
+                      )}
+                    </div>
+
+                    {localResult.status === 'offline' ? (
+                      <p className="text-sm text-slate-400">
+                        The local Python backend is not reachable. To enable this feature, run: <br />
+                        <code className="text-xs bg-black/30 p-1 rounded mt-1 block w-fit">python src/backend/main.py</code>
+                      </p>
+                    ) : (
+                      <div className="space-y-3">
+                        <div>
+                          <div className="flex justify-between text-xs mb-1">
+                            <span className="text-green-300">Real Probability</span>
+                            <span className="text-white">{localResult.probabilities.real}%</span>
+                          </div>
+                          <div className="w-full bg-slate-700/50 rounded-full h-2 overflow-hidden">
+                            <div className="bg-green-500 h-full rounded-full" style={{ width: `${localResult.probabilities.real}%` }} />
+                          </div>
+                        </div>
+                        <div>
+                          <div className="flex justify-between text-xs mb-1">
+                            <span className="text-red-300">Deepfake Probability</span>
+                            <span className="text-white">{localResult.probabilities.fake}%</span>
+                          </div>
+                          <div className="w-full bg-slate-700/50 rounded-full h-2 overflow-hidden">
+                            <div className="bg-red-500 h-full rounded-full" style={{ width: `${localResult.probabilities.fake}%` }} />
+                          </div>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-2 text-right">Running on: {localResult.device_used}</p>
+
+                        {localResult.metadata_flags && localResult.metadata_flags.length > 0 && (
+                          <div className="mt-3 pt-3 border-t border-slate-700/50">
+                            <p className="text-xs font-semibold text-amber-400 mb-1">Metadata Alerts:</p>
+                            <ul className="space-y-1">
+                              {localResult.metadata_flags.map((flag, idx) => (
+                                <li key={idx} className="text-xs text-amber-200/80 flex items-start">
+                                  <AlertTriangle className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" />
+                                  {flag}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Ensemble Block - Re-added correctly */}
+                {result && localResult && localResult.status !== 'offline' && (
+                  <div className="bg-slate-800/60 border border-slate-600 rounded-2xl p-5 mb-6">
+                    <h3 className="text-white font-bold flex items-center mb-4">
+                      <Shield className="w-5 h-5 mr-2 text-blue-400" />
+                      Ensemble Consensus
+                    </h3>
+                    <div className="w-full">
+                      <div className="flex justify-between text-sm mb-2">
+                        <span className="text-slate-400">Combined Manipulation Probability</span>
+                        <span className="text-white font-bold">
+                          {Math.round(((result.isOriginal ? (100 - result.confidence) : result.confidence) + (localResult.probabilities?.fake || 0)) / 2)}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-slate-700/50 rounded-full h-3 overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-blue-500 to-purple-500"
+                          style={{ width: `${Math.round(((result.isOriginal ? (100 - result.confidence) : result.confidence) + (localResult.probabilities?.fake || 0)) / 2)}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {[

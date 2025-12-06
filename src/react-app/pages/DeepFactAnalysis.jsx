@@ -20,6 +20,7 @@ import {
 } from "../shared/utils/analysis";
 import { generateFallbackFactAnalysis } from "../shared/utils/localContentAnalysis";
 import { callGemini } from "../shared/utils/gemini";
+import { saveAnalysisToHistory } from "../shared/utils/historyStorage";
 
 const INITIAL_RESULT = {
   trustScore: 0,
@@ -127,7 +128,7 @@ export default function DeepFactAnalysis() {
         analysisData.highlights
       );
 
-      setResult({
+      const resultData = {
         trustScore,
         status: analysisData.status ?? "success",
         message: analysisData.message || "Analysis completed",
@@ -139,16 +140,31 @@ export default function DeepFactAnalysis() {
           bias: analysisData.bias || 0,
           sourceQuality: analysisData.sourceQuality || 0,
         },
+      };
+
+      setResult(resultData);
+
+      // Save to history
+      saveAnalysisToHistory({
+        type: 'text',
+        contentPreview: content.substring(0, 100) + (content.length > 100 ? '...' : ''),
+        result: resultData,
       });
     } catch (error) {
       console.error("Analysis failed", error);
       // Fallback logic remains similar but simplified for brevity
-      setResult({
-        ...INITIAL_RESULT,
-        status: "error",
-        message: "Analysis failed. Please check your API key or connection.",
-        analysis: { ...INITIAL_RESULT.analysis, flags: [error.message] }
-      });
+      if (analysisMode === "text" && content.trim()) {
+        console.log("Using local fallback analysis");
+        const fallbackData = generateFallbackFactAnalysis(content);
+        setResult(fallbackData);
+      } else {
+        setResult({
+          ...INITIAL_RESULT,
+          status: "error",
+          message: "Analysis failed. Please check your API key or connection.",
+          analysis: { ...INITIAL_RESULT.analysis, flags: [error.message] }
+        });
+      }
     } finally {
       setIsAnalyzing(false);
     }
@@ -205,8 +221,8 @@ export default function DeepFactAnalysis() {
                 <button
                   onClick={() => setAnalysisMode("text")}
                   className={`flex-1 py-3 text-sm font-medium transition-colors border-b-2 ${analysisMode === "text"
-                      ? "border-blue-500 text-blue-400"
-                      : "border-transparent text-slate-400 hover:text-slate-300"
+                    ? "border-blue-500 text-blue-400"
+                    : "border-transparent text-slate-400 hover:text-slate-300"
                     }`}
                 >
                   <div className="flex items-center justify-center">
@@ -217,8 +233,8 @@ export default function DeepFactAnalysis() {
                 <button
                   onClick={() => setAnalysisMode("image")}
                   className={`flex-1 py-3 text-sm font-medium transition-colors border-b-2 ${analysisMode === "image"
-                      ? "border-blue-500 text-blue-400"
-                      : "border-transparent text-slate-400 hover:text-slate-300"
+                    ? "border-blue-500 text-blue-400"
+                    : "border-transparent text-slate-400 hover:text-slate-300"
                     }`}
                 >
                   <div className="flex items-center justify-center">
