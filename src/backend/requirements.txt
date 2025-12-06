@@ -1,9 +1,7 @@
-tensorflow
+fastapi
+uvicorn
+python-multipart
+torch
+torchvision
+pillow
 numpy
-matplotlib
-scikit-learn
-opencv-python
-dlib
-flask
-cors
-flask_cors

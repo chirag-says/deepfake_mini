@@ -19,9 +19,9 @@ const signedInNav = [
 ];
 
 const signedOutNav = [
-  { label: "Mission", to: "/#mission" },
-  { label: "Why Choose Us", to: "/#why-us" },
-  { label: "Exclusives", to: "/#exclusives" },
+  { label: "Mission", to: "/mission" },
+  { label: "Why Choose Us", to: "/why-choose-us" },
+  { label: "Exclusives", to: "/exclusives" },
   { label: "Team", to: "/team" },
 ];
 

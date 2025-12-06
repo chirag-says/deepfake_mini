@@ -4,75 +4,242 @@ import {
   Camera,
   CheckCircle,
   FileImage,
+  FileVideo,
   Search,
   Upload,
   XCircle,
+  ScanEye,
+  Info,
 } from "lucide-react";
 import SiteHeader from "../components/layout/SiteHeader";
 import ParticleBackground from "../components/common/ParticleBackground";
 import FloatingCard from "../components/common/FloatingCard";
 import Button from "../components/common/Button";
 import { callGemini } from "../shared/utils/gemini";
+import { extractVideoFrames } from "../shared/utils/videoProcessing";
+import { generateELA } from "../shared/utils/elaProcessing";
 
 const DEFAULT_RESULT = null;
 
 export default function MediaAuthenticity() {
   const [mediaFile, setMediaFile] = useState(null);
   const [mediaPreview, setMediaPreview] = useState(null);
+  const [mediaType, setMediaType] = useState(null); // 'image' | 'video' | 'audio'
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState(DEFAULT_RESULT);
+  const [elaResult, setElaResult] = useState(null);
+  const [isElaProcessing, setIsElaProcessing] = useState(false);
+
   const fileInputRef = useRef(null);
+  const resultsCache = useRef(new Map());
 
   const handleMediaFileChange = (event) => {
     const file = event.target.files?.[0];
-    if (file && file.type.startsWith("image/")) {
-      setMediaFile(file);
+    if (!file) return;
+
+    setMediaFile(file);
+    setElaResult(null); // Reset ELA on new file
+
+    // Check cache immediately
+    const cacheKey = `${file.name}-${file.size}-${file.lastModified}`;
+    if (resultsCache.current.has(cacheKey)) {
+      setResult(resultsCache.current.get(cacheKey));
+    } else {
+      setResult(DEFAULT_RESULT);
+    }
+
+    if (file.type.startsWith("image/")) {
+      setMediaType("image");
       const reader = new FileReader();
       reader.onloadend = () =>
         setMediaPreview(reader.result?.toString() || null);
       reader.readAsDataURL(file);
+    } else if (file.type.startsWith("video/")) {
+      setMediaType("video");
+      const url = URL.createObjectURL(file);
+      setMediaPreview(url);
+    } else if (file.type.startsWith("audio/")) {
+      setMediaType("audio");
+      const url = URL.createObjectURL(file);
+      setMediaPreview(url);
+    }
+  };
+
+  const handleRunEla = async () => {
+    if (!mediaFile || mediaType !== 'image') return;
+    setIsElaProcessing(true);
+    try {
+      const elaDataUrl = await generateELA(mediaFile);
+      setElaResult(elaDataUrl);
+    } catch (err) {
+      console.error("ELA Failed", err);
+    } finally {
+      setIsElaProcessing(false);
     }
   };
 
   const analyzeMedia = async () => {
     if (!mediaFile) return;
+
+    // Cache check just in case
+    const cacheKey = `${mediaFile.name}-${mediaFile.size}-${mediaFile.lastModified}`;
+    if (resultsCache.current.has(cacheKey)) {
+      setResult(resultsCache.current.get(cacheKey));
+      return;
+    }
+
     setIsAnalyzing(true);
     setResult(DEFAULT_RESULT);
 
     try {
-      const base64Image = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () =>
-          resolve(reader.result?.toString().split(",")[1] ?? "");
-        reader.onerror = reject;
-        reader.readAsDataURL(mediaFile);
-      });
+      let contentParts = [];
+      let prompt = "";
 
-      const prompt = `Analyze this image for authenticity and determine if it's a deepfake or original. Provide a detailed analysis including: 1. Overall authenticity assessment (0-100%) 2. Potential signs of manipulation or AI generation 3. Technical indicators of authenticity 4. Confidence level in your assessment (0-100%). Respond with JSON using keys isOriginal, confidence, message, flags, highlights, technicalIndicators { inconsistencies, artifacts, metadata }`;
+      if (mediaType === "image") {
+        const base64Image = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () =>
+            resolve(reader.result?.toString().split(",")[1] ?? "");
+          reader.onerror = reject;
+          reader.readAsDataURL(mediaFile);
+        });
+
+        prompt = `Analyze this image for digital manipulation, specifically focusing on Generative AI edits (like Magic Eraser, Generative Fill, Galaxy AI).
+        
+        CRITICAL INSTRUCTION: Assume the image MIGHT be manipulated. You must find the evidence.
+
+        1. **In-Painting/Generative Fill Detection:**
+           - Look for 'smudged' or overly smooth textures in specific areas where text or objects might have been removed.
+           - Check for 'ghosting' artifacts where old pixels weren't fully replaced.
+           - Does the background noise/grain pattern vanish in certain spots? (Strong indicator of AI edit).
+        
+        2. **Document Forensics (If text is present):**
+           - Are some text lines perfectly horizontal while others follow the page curve?
+           - Is the 'black' level of the text consistent? (Edited text is often pitch black #000000 while scanned text is dark grey/noisy).
+           - Alignment check: Does the text sit purely on the grid?
+
+        3. **Deepfake/Face Analysis:**
+           - Skin texture consistency.
+           - Eye reflections (must match the environment).
+
+        Respond with JSON:
+        {
+          "isOriginal": boolean,
+          "confidence": number (0-100),
+          "message": "Detailed technical explanation of the findings.",
+          "flags": ["List EVERY suspicious element found, e.g. 'Inconsistent noise in row 4', 'Smudged texture in background'"],
+          "highlights": ["List signs of authenticity if any"],
+          "technicalIndicators": {
+            "inconsistencies": number (0-100),
+            "artifacts": number (0-100),
+            "metadata": number (0-100)
+          }
+        }`;
+
+        contentParts = [
+          { text: prompt },
+          {
+            inlineData: {
+              mimeType: mediaFile.type,
+              data: base64Image,
+            },
+          },
+        ];
+      } else if (mediaType === "video") {
+        // Extract 5 representative frames
+        const frames = await extractVideoFrames(mediaFile, 5);
+
+        prompt = `Analyze these 5 keyframes extracted from a video for deepfake manipulation. Act as a generic video forensics expert.
+        
+        Look for:
+        1. Temporal inconsistencies between frames (jittering, flickering faces).
+        2. Lip-sync issues or unnatural mouth movements.
+        3. Blink patterns (too frequent, too rare, or unnatural).
+        4. Inconsistent lighting across frames on moving objects.
+        
+        Respond with JSON (same format as image):
+        {
+          "isOriginal": boolean,
+          "confidence": number (0-100),
+          "message": "Deepfake analysis summary",
+          "flags": ["list", "of", "issues"],
+          "highlights": ["positive", "signs"],
+          "technicalIndicators": {
+            "inconsistencies": number,
+            "artifacts": number,
+            "metadata": number
+          }
+        }`;
+
+        contentParts = [
+          { text: prompt },
+          ...frames.map(frame => ({
+            inlineData: {
+              mimeType: "image/jpeg",
+              data: frame,
+            },
+          }))
+        ];
+      } else if (mediaType === "audio") {
+        const base64Audio = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () =>
+            resolve(reader.result?.toString().split(",")[1] ?? "");
+          reader.onerror = reject;
+          reader.readAsDataURL(mediaFile);
+        });
+
+        prompt = `Analyze this audio clip for signs of AI Voice Cloning, Text-to-Speech (TTS), or Deepfake splicing. 
+        
+        Listen carefully for:
+        1. **Breathing Patterns:** Real humans breathe. AI voices often have unnatural breath pauses or no breath at all between long sentences.
+        2. **Prosody/Intonation:** Is the rhythm too perfect? Does the emotion match the words? (Robotic/Flat delivery).
+        3. **Digital Artifacts:** Listen for 'electronic glitches', 'clicks', or distinct 'metallic' hollow sounds often found in low-quality voice clones (like ElevenLabs v1).
+        4. **Background Noise:** Is the background dead silent (common in TTS) or naturally noisy?
+
+        Respond with JSON (same format as image):
+        {
+          "isOriginal": boolean,
+          "confidence": number (0-100),
+          "message": "Audio forensics summary",
+          "flags": ["list", "of", "issues", "e.g. 'Lack of breath pauses'"],
+          "highlights": ["positive", "signs"],
+          "technicalIndicators": {
+            "inconsistencies": number,
+            "artifacts": number,
+            "metadata": number
+          }
+        }`;
+
+        contentParts = [
+          { text: prompt },
+          {
+            inlineData: {
+              mimeType: mediaFile.type,
+              data: base64Audio,
+            },
+          },
+        ];
+      }
 
       const data = await callGemini({
         contents: [
           {
-            parts: [
-              { text: prompt },
-              {
-                inlineData: {
-                  mimeType: mediaFile.type,
-                  data: base64Image,
-                },
-              },
-            ],
+            parts: contentParts,
           },
         ],
+        generationConfig: {
+          temperature: 0.0, // Force deterministic output
+          topK: 1,
+          topP: 1,
+        },
         fallbackModels: [
-          "gemini-2.0-flash",
+          "gemini-1.5-pro",
+          "gemini-1.5-flash",
           "gemini-1.5-flash-002",
-          "gemini-1.5-flash-001",
-          "gemini-1.0-pro-vision-latest",
-          "gemini-1.0-pro-vision",
-          "gemini-pro-vision",
         ],
       });
+
       const responseText =
         data.candidates?.[0]?.content?.parts?.[0]?.text || "No response";
 
@@ -92,15 +259,7 @@ export default function MediaAuthenticity() {
       const normalizeText = (value, fallback = "") => {
         if (value === null || value === undefined) return fallback;
         if (typeof value === "string") return value;
-        if (typeof value === "number" || typeof value === "boolean") {
-          return String(value);
-        }
-        try {
-          return JSON.stringify(value);
-        } catch (error) {
-          console.warn("Unable to stringify value", value, error);
-          return fallback;
-        }
+        return String(value);
       };
 
       const normalizeScore = (value, fallback = 0) => {
@@ -111,73 +270,32 @@ export default function MediaAuthenticity() {
         return fallback;
       };
 
-      const normalizeBoolean = (value, fallback = true) => {
-        if (typeof value === "boolean") return value;
-        if (typeof value === "string") {
-          const normalized = value.trim().toLowerCase();
-          if (normalized === "true") return true;
-          if (normalized === "false") return false;
-        }
-        return fallback;
-      };
-
-      const toStringArray = (value) => {
-        if (!value) return [];
-        const array = Array.isArray(value) ? value : [value];
-        return array
-          .map((item) => normalizeText(item, ""))
-          .filter((item) => item.length > 0);
-      };
-
       const analysisData = extractJson() || {};
-
       const technicalIndicators = analysisData.technicalIndicators || {};
-      const normalizedIndicators = {
-        inconsistencies: normalizeScore(
-          technicalIndicators.inconsistencies,
-          50
-        ),
-        artifacts: normalizeScore(technicalIndicators.artifacts, 50),
-        metadata: normalizeScore(technicalIndicators.metadata, 50),
+
+      const finalResult = {
+        isOriginal: analysisData.isOriginal !== false, // Default to true if undefined, but catch explicit false
+        confidence: normalizeScore(analysisData.confidence, 50),
+        message: normalizeText(analysisData.message, "Analysis completed"),
+        flags: Array.isArray(analysisData.flags) ? analysisData.flags : [],
+        highlights: Array.isArray(analysisData.highlights) ? analysisData.highlights : [],
+        technicalIndicators: {
+          inconsistencies: normalizeScore(technicalIndicators.inconsistencies, 0),
+          artifacts: normalizeScore(technicalIndicators.artifacts, 0),
+          metadata: normalizeScore(technicalIndicators.metadata, 0),
+        },
       };
 
-      setResult({
-        isOriginal: normalizeBoolean(analysisData.isOriginal, true),
-        confidence: normalizeScore(analysisData.confidence, 50),
-        message: normalizeText(
-          analysisData.message ?? responseText,
-          "Analysis completed"
-        ),
-        flags: toStringArray(analysisData.flags),
-        highlights: toStringArray(analysisData.highlights),
-        technicalIndicators: normalizedIndicators,
-      });
+      setResult(finalResult);
+      resultsCache.current.set(cacheKey, finalResult);
+
     } catch (error) {
       console.error("Media analysis failed", error);
-      const messageText =
-        error instanceof Error ? error.message.toLowerCase() : "";
-      const isConfigError = messageText.includes("api key");
-      const isModelMissing =
-        (error?.status === 404 || messageText.includes("404")) &&
-        (messageText.includes("model") || messageText.includes("not found"));
-      const attemptedModels =
-        error?.attemptedModels
-          ?.map((attempt) => attempt.model)
-          .filter(Boolean) ?? [];
-      const suggestedModel =
-        attemptedModels.find((modelName) => modelName?.includes("vision")) ||
-        attemptedModels.at(-1) ||
-        "gemini-pro-vision";
       setResult({
         isOriginal: false,
         confidence: 0,
-        message: isConfigError
-          ? "Gemini API key is missing. Update your .env with VITE_GEMINI_API_KEY."
-          : isModelMissing
-          ? `Gemini vision model not available for this API key. Enable gemini-1.5-flash or vision access in Google AI Studio or set VITE_GEMINI_MODEL_NAME to a vision-capable model (e.g., ${suggestedModel}).`
-          : (error instanceof Error && error.message) ||
-            "Analysis failed. Please try again.",
-        flags: ["Analysis service unavailable"],
+        message: "Analysis failed. Please check your API key or connection.",
+        flags: [error.message],
         highlights: [],
         technicalIndicators: {
           inconsistencies: 0,
@@ -206,31 +324,110 @@ export default function MediaAuthenticity() {
             <div className="text-center mb-14">
               <div className="inline-flex items-center px-4 py-2 rounded-full border border-purple-500/30 bg-purple-500/10 text-purple-300 text-sm mb-6">
                 <Camera className="w-4 h-4 mr-2" />
-                Deepfake & Image Forensics
+                Deepfake & Media Forensics
               </div>
               <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
                 Media Authenticity
               </h1>
               <p className="text-lg text-slate-300 max-w-2xl mx-auto">
-                Upload imagery to detect manipulation artifacts, metadata
-                anomalies, and AI generation signatures.
+                Upload images, videos, or audio to detect manipulation artifacts, deepfake signatures, and AI generation anomalies.
               </p>
             </div>
 
             <FloatingCard className="mb-10">
               <div className="flex flex-col items-center text-center">
-                <div className="w-full border border-dashed border-slate-700/70 rounded-3xl bg-slate-900/50 p-6 mb-6">
+                <div
+                  className="w-full border-2 border-dashed border-slate-700/70 rounded-3xl bg-slate-900/50 p-6 mb-6 transition-colors hover:border-purple-500/50"
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    if (e.dataTransfer.files?.[0]) {
+                      const event = { target: { files: e.dataTransfer.files } };
+                      handleMediaFileChange(event);
+                    }
+                  }}
+                >
                   {mediaPreview ? (
-                    <img
-                      src={mediaPreview}
-                      alt="Preview"
-                      className="max-h-72 mx-auto rounded-2xl border border-slate-800 object-contain"
-                    />
+                    mediaType === "video" ? (
+                      <video
+                        src={mediaPreview}
+                        controls
+                        className="max-h-80 mx-auto rounded-2xl border border-slate-800"
+                      />
+                    ) : mediaType === "audio" ? (
+                      <div className="flex flex-col items-center justify-center py-10">
+                        <div className="w-16 h-16 bg-purple-500/20 rounded-full flex items-center justify-center mb-4 animate-pulse">
+                          <FileVideo className="w-8 h-8 text-purple-400" />
+                        </div>
+                        <audio src={mediaPreview} controls className="w-full max-w-md" />
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className={`grid ${elaResult ? 'grid-cols-2 gap-4' : 'grid-cols-1'}`}>
+                          <div className="relative">
+                            {elaResult && <span className="absolute top-2 left-2 bg-black/50 text-xs px-2 py-1 rounded text-white">Original</span>}
+                            <img
+                              src={mediaPreview}
+                              alt="Preview"
+                              className="max-h-80 mx-auto rounded-2xl border border-slate-800 object-contain w-full"
+                            />
+                          </div>
+                          {elaResult && (
+                            <div className="relative">
+                              <span className="absolute top-2 left-2 bg-black/50 text-xs px-2 py-1 rounded text-white">ELA Heatmap</span>
+                              <img
+                                src={elaResult}
+                                alt="ELA Analysis"
+                                className="max-h-80 mx-auto rounded-2xl border border-slate-800 object-contain w-full"
+                              />
+                            </div>
+                          )}
+                        </div>
+
+                        {elaResult && (
+                          <div className="bg-slate-800/50 p-3 rounded-xl text-xs text-slate-400 text-left flex items-start">
+                            <Info className="w-4 h-4 mr-2 flex-shrink-0 mt-0.5 text-blue-400" />
+                            <p>
+                              <strong className="text-blue-300">How to read ELA:</strong> This heatmap shows compression noise.
+                              The entire image should have roughly the same "noise" level (brightness).
+                              <span className="text-white font-medium"> Bright white/rainbow patches</span> often indicate
+                              areas that were recently pasted or modified.
+                            </p>
+                          </div>
+                        )}
+
+                        {mediaType === 'image' && !elaResult && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRunEla();
+                            }}
+                            disabled={isElaProcessing}
+                            className="text-xs flex items-center justify-center mx-auto text-purple-300 hover:text-purple-200 hover:underline disabled:opacity-50"
+                          >
+                            {isElaProcessing ? (
+                              "Generating Heatmap..."
+                            ) : (
+                              <>
+                                <ScanEye className="w-3 h-3 mr-1" />
+                                Run Forensic ELA Scan
+                              </>
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    )
                   ) : (
-                    <div className="h-64 flex flex-col items-center justify-center text-slate-500">
-                      <FileImage className="w-12 h-12 mb-4" />
+                    <div className="h-64 flex flex-col items-center justify-center text-slate-500 cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                      <div className="flex gap-4 mb-4">
+                        <FileImage className="w-12 h-12" />
+                        <FileVideo className="w-12 h-12" />
+                      </div>
+                      <p className="text-lg font-medium text-slate-400 mb-2">
+                        Drop media here or click to browse
+                      </p>
                       <p className="text-sm">
-                        Drop an image or browse your files
+                        Supports JPG, PNG, WEBP, MP4, MP3, WAV
                       </p>
                     </div>
                   )}
@@ -239,7 +436,7 @@ export default function MediaAuthenticity() {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/*,video/*,audio/*"
                   className="hidden"
                   onChange={handleMediaFileChange}
                 />
@@ -252,7 +449,7 @@ export default function MediaAuthenticity() {
                     disabled={isAnalyzing}
                   >
                     <Upload className="w-4 h-4 mr-2" />
-                    {mediaPreview ? "Change Image" : "Select Image"}
+                    {mediaPreview ? "Replace Media" : "Select Media"}
                   </Button>
                   <Button
                     className="w-full"
@@ -261,11 +458,11 @@ export default function MediaAuthenticity() {
                     loading={isAnalyzing}
                   >
                     {isAnalyzing ? (
-                      "Analyzing Media..."
+                      "Analyzing..."
                     ) : (
                       <>
                         <Search className="w-4 h-4 mr-2" />
-                        Verify Authenticity
+                        Verify {mediaType === "video" ? "Video" : mediaType === "audio" ? "Audio" : "Image"}
                       </>
                     )}
                   </Button>
@@ -274,20 +471,19 @@ export default function MediaAuthenticity() {
             </FloatingCard>
 
             {result && (
-              <FloatingCard className="space-y-6">
+              <FloatingCard className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                   <div>
                     <h2 className="text-2xl font-bold text-white">
                       Verification Summary
                     </h2>
-                    <p className="text-slate-400">{result.message}</p>
+                    <p className="text-slate-400 max-w-xl">{result.message}</p>
                   </div>
                   <div
-                    className={`flex items-center px-4 py-2 rounded-full text-sm ${
-                      result.isOriginal
-                        ? "bg-green-500/20 text-green-300"
-                        : "bg-red-500/20 text-red-300"
-                    }`}
+                    className={`flex items-center px-4 py-2 rounded-full text-sm font-medium border ${result.isOriginal
+                      ? "bg-green-500/10 border-green-500/20 text-green-300"
+                      : "bg-red-500/10 border-red-500/20 text-red-300"
+                      }`}
                   >
                     {result.isOriginal ? (
                       <CheckCircle className="w-5 h-5 mr-2" />
@@ -295,7 +491,7 @@ export default function MediaAuthenticity() {
                       <XCircle className="w-5 h-5 mr-2" />
                     )}
                     {result.isOriginal
-                      ? "Likely Original"
+                      ? "Likely Authentic"
                       : "Manipulation Detected"}
                   </div>
                 </div>
@@ -303,45 +499,52 @@ export default function MediaAuthenticity() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {[
                     {
-                      label: "Confidence",
+                      label: "AI Confidence",
                       value: result.confidence,
-                      tone: "text-green-300",
+                      color: "text-blue-300",
+                      barColor: "bg-blue-500",
                     },
                     {
-                      label: "Artifacts",
+                      label: "Artifact Level",
                       value: result.technicalIndicators.artifacts,
-                      tone: "text-amber-300",
+                      color: "text-amber-300",
+                      barColor: "bg-amber-500",
                     },
                     {
-                      label: "Metadata Integrity",
-                      value: result.technicalIndicators.metadata,
-                      tone: "text-blue-300",
+                      label: "Inconsistency",
+                      value: result.technicalIndicators.inconsistencies,
+                      color: "text-red-300",
+                      barColor: "bg-red-500",
                     },
                   ].map((metric) => (
                     <div
                       key={metric.label}
-                      className="bg-slate-900/60 rounded-2xl p-6 border border-slate-700/40 text-center"
+                      className="bg-slate-900/60 rounded-2xl p-6 border border-slate-700/40"
                     >
-                      <div className="text-sm font-medium text-slate-400 mb-2">
-                        {metric.label}
+                      <div className="flex justify-between items-end mb-2">
+                        <span className="text-sm font-medium text-slate-400">{metric.label}</span>
+                        <span className={`text-2xl font-bold ${metric.color}`}>{metric.value}%</span>
                       </div>
-                      <div className={`text-3xl font-bold ${metric.tone}`}>
-                        {metric.value}%
+                      <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${metric.barColor} transition-all duration-1000`}
+                          style={{ width: `${metric.value}%` }}
+                        />
                       </div>
                     </div>
                   ))}
                 </div>
 
                 {result.flags?.length > 0 && (
-                  <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6">
+                  <div className="bg-red-500/5 border border-red-500/20 rounded-2xl p-6">
                     <h3 className="text-red-300 font-semibold mb-3 flex items-center">
-                      <AlertTriangle className="w-5 h-5 mr-2" /> Anomalies
-                      Detected
+                      <AlertTriangle className="w-5 h-5 mr-2" />
+                      Detected Anomalies
                     </h3>
-                    <ul className="space-y-2 text-sm text-red-200">
-                      {result.flags.map((flag) => (
-                        <li key={flag} className="flex items-start">
-                          <XCircle className="w-4 h-4 mr-2 mt-0.5" />
+                    <ul className="space-y-2 text-sm text-red-200/80">
+                      {result.flags.map((flag, i) => (
+                        <li key={i} className="flex items-start">
+                          <span className="mr-2 mt-1.5 w-1.5 h-1.5 bg-red-400 rounded-full flex-shrink-0" />
                           {flag}
                         </li>
                       ))}
@@ -350,15 +553,15 @@ export default function MediaAuthenticity() {
                 )}
 
                 {result.highlights?.length > 0 && (
-                  <div className="bg-green-500/10 border border-green-500/20 rounded-2xl p-6">
+                  <div className="bg-green-500/5 border border-green-500/20 rounded-2xl p-6">
                     <h3 className="text-green-300 font-semibold mb-3 flex items-center">
-                      <CheckCircle className="w-5 h-5 mr-2" /> Authenticity
-                      Signals
+                      <CheckCircle className="w-5 h-5 mr-2" />
+                      Authenticity Signals
                     </h3>
-                    <ul className="space-y-2 text-sm text-green-200">
-                      {result.highlights.map((highlight) => (
-                        <li key={highlight} className="flex items-start">
-                          <CheckCircle className="w-4 h-4 mr-2 mt-0.5" />
+                    <ul className="space-y-2 text-sm text-green-200/80">
+                      {result.highlights.map((highlight, i) => (
+                        <li key={i} className="flex items-start">
+                          <span className="mr-2 mt-1.5 w-1.5 h-1.5 bg-green-400 rounded-full flex-shrink-0" />
                           {highlight}
                         </li>
                       ))}

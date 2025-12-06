@@ -7,6 +7,9 @@ import TeamDetails from "./pages/TeamDetails";
 import LandingPage from "./pages/Landing";
 import AuthPage from "./pages/Auth";
 import RegisterPage from "./pages/Register";
+import MissionPage from "./pages/Mission";
+import WhyChooseUsPage from "./pages/WhyChooseUs";
+import ExclusivesPage from "./pages/Exclusives";
 import ProtectedRoute from "./shared/components/ProtectedRoute";
 
 export default function App() {
@@ -16,6 +19,9 @@ export default function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<AuthPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/mission" element={<MissionPage />} />
+        <Route path="/why-choose-us" element={<WhyChooseUsPage />} />
+        <Route path="/exclusives" element={<ExclusivesPage />} />
         <Route
           path="/app"
           element={(

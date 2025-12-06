@@ -158,7 +158,7 @@ export default function LandingPage() {
                 </SignInButton>
                 <Button
                   as="a"
-                  href="#mission"
+                  href="/mission"
                   variant="ghost"
                   size="lg"
                   className="w-full sm:w-auto"
