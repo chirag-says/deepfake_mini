@@ -12,6 +12,15 @@ import base64
 import requests
 import json
 import re
+from dotenv import load_dotenv
+from pathlib import Path
+
+# Load .env from project root (two levels up from src/backend/)
+env_path = Path(__file__).resolve().parent.parent.parent / ".env"
+print(f"Loading .env from: {env_path}")
+print(f".env exists: {env_path.exists()}")
+load_dotenv(env_path)
+print(f"VITE_GEMINI_API_KEY loaded: {'Yes' if os.environ.get('VITE_GEMINI_API_KEY') else 'No'}")
 
 # Initialize FastAPI app
 app = FastAPI()
@@ -42,7 +51,7 @@ except Exception as e:
 
 # Gemini API Configuration
 GEMINI_API_KEY = os.environ.get("VITE_GEMINI_API_KEY", "")
-GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
 
 def analyze_with_gemini(image_bytes: bytes, mime_type: str = "image/jpeg") -> dict:
     """Analyze image using Gemini Vision API"""

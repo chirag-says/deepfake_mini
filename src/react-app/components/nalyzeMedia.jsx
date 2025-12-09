@@ -19,12 +19,8 @@ const DEFAULT_TECH_INDICATORS = {
 };
 
 const FALLBACK_MODELS = [
-  "gemini-2.0-flash",
-  "gemini-1.5-flash-002",
-  "gemini-1.5-flash-001",
-  "gemini-1.0-pro-vision-latest",
-  "gemini-1.0-pro-vision",
-  "gemini-pro-vision",
+  "gemini-2.5-flash",
+  "gemini-2.5-flash-lite",
 ];
 
 const normalizeText = (value, fallback = "") => {

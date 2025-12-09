@@ -1,10 +1,7 @@
 const DEFAULT_API_ROOTS = [
   import.meta.env.VITE_GEMINI_API_ROOT?.replace(/\/$/, ""),
   "https://generativelanguage.googleapis.com/v1beta",
-  "https://generativelanguage.googleapis.com/v1",
 ].filter(Boolean);
-
-const KNOWN_MODEL_SUFFIX = /-(latest|\d{3})$/;
 
 function normalizeModelName(model) {
   return model?.trim() || undefined;
@@ -14,28 +11,20 @@ function addModelVariant(set, modelName) {
   const normalized = normalizeModelName(modelName);
   if (!normalized) return;
   set.add(normalized);
-  if (!KNOWN_MODEL_SUFFIX.test(normalized)) {
-    set.add(`${normalized}-latest`);
-  } else if (normalized.endsWith("-latest")) {
-    set.add(normalized.replace(/-latest$/, ""));
-  }
 }
 
 function buildModelFallbacks(requestedModel, additionalModels = []) {
   const baseModel =
     normalizeModelName(requestedModel) ||
     normalizeModelName(import.meta.env.VITE_GEMINI_MODEL_NAME) ||
-    "gemini-1.5-flash-latest";
+    "gemini-2.5-flash";
 
   const fallbackSet = new Set();
 
   addModelVariant(fallbackSet, baseModel);
-  addModelVariant(fallbackSet, "gemini-2.0-flash");
-  addModelVariant(fallbackSet, "gemini-2.0-flash-lite-preview");
-  addModelVariant(fallbackSet, "gemini-1.5-flash-latest");
-  addModelVariant(fallbackSet, "gemini-1.5-flash");
-  addModelVariant(fallbackSet, "gemini-1.5-flash-002");
-  addModelVariant(fallbackSet, "gemini-1.5-flash-001");
+  // Use gemini-2.5-flash as the primary available model
+  addModelVariant(fallbackSet, "gemini-2.5-flash");
+  addModelVariant(fallbackSet, "gemini-2.5-flash-lite");
 
   additionalModels.forEach((modelName) =>
     addModelVariant(fallbackSet, modelName)
@@ -135,11 +124,11 @@ export async function callGemini({
           code: error.code,
           message: error.message,
         });
-        if (error.status !== 404) {
+        if (error.status !== 404 && error.status !== 429) {
           error.attemptedModels = attempts;
           throw error;
         }
-        // Continue trying fallbacks if we hit a 404 (model not found)
+        // Continue trying fallbacks if we hit a 404 (model not found) or 429 (rate limit)
       }
     }
   }

@@ -92,10 +92,8 @@ Return JSON with keys score, trustSignals[], risks[], summary, recency, recommen
       const data = await callGemini({
         contents: [{ parts: [{ text: prompt }] }],
         fallbackModels: [
-          "gemini-1.5-flash-002",
-          "gemini-1.5-flash-001",
-          "gemini-1.0-pro",
-          "gemini-pro",
+          "gemini-2.5-flash",
+          "gemini-2.5-flash-lite",
         ],
       });
       const responseText =

@@ -79,7 +79,19 @@ export default function DeepFactAnalysis() {
         
         Content: "${content}". 
         
-        Respond with JSON using keys: factualAccuracy, bias, sourceQuality, trustScore, status, message, flags, highlights, sources.`;
+        Respond with valid JSON ONLY.
+        Schema:
+        {
+          "factualAccuracy": number,
+          "bias": number,
+          "sourceQuality": number,
+          "trustScore": number,
+          "status": "string",
+          "message": "string",
+          "flags": ["string"],
+          "highlights": ["string"],
+          "sources": [{"name": "string", "url": "string", "credibility": number}]
+        }`;
 
         contentParts = [{ text: prompt }];
 
@@ -97,7 +109,19 @@ export default function DeepFactAnalysis() {
         3. Check if the image context supports the text (e.g., is the image of a real event matching the text description?).
         4. Detect if it's a known fake news template or altered headline.
 
-        Respond with JSON using keys: factualAccuracy, bias, sourceQuality, trustScore, status, message, flags, highlights, sources.`;
+        Respond with valid JSON ONLY.
+        Schema:
+        {
+          "factualAccuracy": number,
+          "bias": number,
+          "sourceQuality": number,
+          "trustScore": number,
+          "status": "string",
+          "message": "string",
+          "flags": ["string"],
+          "highlights": ["string"],
+          "sources": [{"name": "string", "url": "string", "credibility": number}]
+        }`;
 
         contentParts = [
           { text: prompt },
@@ -112,7 +136,11 @@ export default function DeepFactAnalysis() {
 
       const data = await callGemini({
         contents: [{ parts: contentParts }],
-        fallbackModels: ["gemini-1.5-pro", "gemini-1.5-flash"],
+        generationConfig: {
+          responseMimeType: "application/json",
+          temperature: 0.1,
+        },
+        fallbackModels: ["gemini-2.5-flash", "gemini-2.5-flash-lite"],
       });
 
       const responseText =
