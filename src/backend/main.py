@@ -1050,8 +1050,8 @@ if frontend_dist.exists():
     if (frontend_dist / "assets").exists():
         app.mount("/assets", StaticFiles(directory=str(frontend_dist / "assets")), name="assets")
         
-    # Serve favicon, robots.txt, sitemap.xml directly if they exist
-    for static_file in ["robots.txt", "sitemap.xml", "favicon.ico", "logo.png"]:
+    # Serve favicon, robots.txt, sitemap.xml, and PWA files directly if they exist
+    for static_file in ["robots.txt", "sitemap.xml", "favicon.ico", "logo.png", "sw.js", "manifest.json", "service-worker.js"]:
         file_path = frontend_dist / static_file
         if file_path.exists():
             # Use a closure to capture the specific file path
