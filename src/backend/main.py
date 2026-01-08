@@ -1079,7 +1079,7 @@ def attach_spa(target_app: FastAPI):
         target_app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
 
     # 2. Serve specific static files at root level
-    static_files = ["robots.txt", "sitemap.xml", "favicon.ico", "logo.png", "sw.js", "manifest.json", "index.css"]
+    static_files = ["robots.txt", "sitemap.xml", "favicon.ico", "logo.png", "logo-v2.png", "DeFraudAI_Logo.png", "sw.js", "manifest.json", "index.css"]
     
     for file_name in static_files:
         file_path = frontend_dist / file_name

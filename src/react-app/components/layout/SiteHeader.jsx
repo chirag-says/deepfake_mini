@@ -45,7 +45,7 @@ export default function SiteHeader() {
                 <img
                   src="/logo-v2.png"
                   alt="DeFraudAI Logo"
-                  className="relative w-16 h-16 object-contain rounded-full border-2 border-blue-500/50 shadow-xl"
+                  className="relative w-12 h-12 object-contain rounded-full bg-white/10 p-1 border-2 border-emerald-500/50 shadow-lg backdrop-blur-sm"
                 />
               </div>
               <div>
