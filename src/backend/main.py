@@ -1048,14 +1048,20 @@ async def analyze_ensemble(
 
 
 # ============================================
-# SPA Deployment Logic (Unified)
+# SPA Deployment Logic (Unified) - Fixed for API Priority
 # ============================================
 
 def attach_spa(target_app: FastAPI):
     """
     Attaches the React Frontend (SPA) to the FastAPI backend.
-    MUST be called LAST to ensure API routes take precedence.
+    
+    CRITICAL: Uses a different approach to avoid catch-all route conflicts.
+    Instead of a catch-all GET route (which causes 405 for POST/PUT/DELETE),
+    we use a middleware to serve the SPA only for truly non-API paths.
     """
+    from starlette.middleware.base import BaseHTTPMiddleware
+    from fastapi.responses import FileResponse
+    
     # Path to dist: src/backend/main.py -> ../../dist
     frontend_dist = Path(__file__).resolve().parent.parent.parent / "dist"
     
@@ -1064,43 +1070,74 @@ def attach_spa(target_app: FastAPI):
         return
 
     print(f"SPA: Attaching frontend from {frontend_dist}")
+    
+    index_html_content = (frontend_dist / "index.html").read_text(encoding="utf-8")
 
-    # 1. Mount /assets folder
+    # 1. Mount /assets folder FIRST (before any routes)
     assets_dir = frontend_dist / "assets"
     if assets_dir.exists():
         target_app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
 
-    # 2. Serve Root Files (favicon, robots, etc.)
-    static_files = ["robots.txt", "sitemap.xml", "favicon.ico", "logo.png", "sw.js", "manifest.json"]
+    # 2. Serve specific static files at root level
+    static_files = ["robots.txt", "sitemap.xml", "favicon.ico", "logo.png", "sw.js", "manifest.json", "index.css"]
+    
     for file_name in static_files:
         file_path = frontend_dist / file_name
         if file_path.exists():
-            # Define specific route for each file
-            @target_app.get(f"/{file_name}", include_in_schema=False)
-            async def serve_file(f_path=file_path): 
-                from fastapi.responses import FileResponse
-                return FileResponse(f_path)
+            # Create a closure to capture the correct file_path
+            def make_handler(fp):
+                async def serve_static():
+                    return FileResponse(fp)
+                return serve_static
+            
+            target_app.add_api_route(
+                f"/{file_name}",
+                make_handler(file_path),
+                methods=["GET"],
+                include_in_schema=False
+            )
 
-    # 3. Serve Index (Root)
+    # 3. Serve Index at Root
     @target_app.get("/", include_in_schema=False)
     async def serve_root():
-        return HTMLResponse((frontend_dist / "index.html").read_text(encoding="utf-8"))
+        return HTMLResponse(index_html_content)
 
-    # 4. Catch-All for SPA Routing (Strictly Last)
-    @target_app.get("/{full_path:path}", include_in_schema=False)
-    async def catch_all(full_path: str):
-        # If this captures an API path, return 404 JSON (not HTML)
-        if full_path.startswith("api/") or full_path.startswith("docs"):
-             # DEBUG: Print why we caught an API route
-             print(f"SPA_CATCH_ALL caught API request: {full_path}")
-             return Response(
-                 status_code=404, 
-                 content='{"detail": "API Endpoint Not Found"}', 
-                 media_type="application/json"
-             )
+    # 4. SPA Fallback Middleware - Handles 404s for non-API GET requests
+    class SPAFallbackMiddleware(BaseHTTPMiddleware):
+        """
+        Middleware that catches 404 responses for non-API GET requests
+        and serves the SPA's index.html instead.
         
-        # Otherwise serve index.html for client-side routing
-        return HTMLResponse((frontend_dist / "index.html").read_text(encoding="utf-8"))
+        This approach is CRITICAL because:
+        - It does NOT register a catch-all route (no 405 conflicts)
+        - API routes are always matched first by FastAPI
+        - Only truly unmatched GET requests get the SPA fallback
+        """
+        async def dispatch(self, request: Request, call_next):
+            response = await call_next(request)
+            
+            # Only intercept GET requests that returned 404
+            if response.status_code == 404 and request.method == "GET":
+                path = request.url.path
+                
+                # Don't intercept API or docs paths - they should stay 404
+                if path.startswith("/api") or path.startswith("/docs") or path.startswith("/openapi"):
+                    return response
+                
+                # Don't intercept asset requests - they should stay 404
+                if path.startswith("/assets"):
+                    return response
+                
+                # For all other GET 404s, serve the SPA
+                print(f"SPA Fallback: Serving index.html for {path}")
+                return HTMLResponse(index_html_content)
+            
+            return response
+    
+    # Add the middleware (runs AFTER routes are checked)
+    target_app.add_middleware(SPAFallbackMiddleware)
+    
+    print("SPA: Fallback middleware attached successfully")
 
 # Execute Attachment
 attach_spa(app)
