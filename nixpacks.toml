@@ -3,28 +3,26 @@
 # Railway: Use Python as primary runtime
 # ==========================================
 
-# Force Python provider (prevents Railway from defaulting to Node.js static hosting)
+# Force Python provider
 providers = ["python"]
 
 [phases.setup]
-# Install Python 3.11 with pip and Node.js 20 for build
-# python311Full includes pip, unlike python311
-nixPkgs = ["python311Full", "nodejs_20", "gcc"]
+# Install Python 3.11 with pip package manager and Node.js
+nixPkgs = ["python311", "python311Packages.pip", "nodejs_20", "gcc"]
 
 [phases.install]
-# Install dependencies for both parts
-# Note: Don't upgrade pip - Nix manages the Python environment
+# Install Python deps using python -m pip (guaranteed to work)
+# Install Node deps with npm
 cmds = [
-    "pip install -r src/backend/requirements.txt",
+    "python3.11 -m pip install -r src/backend/requirements.txt --user",
     "npm install"
 ]
 
 [phases.build]
-# Build the React frontend to static files ('dist' folder)
+# Build the React frontend
 cmds = ["npm run build"]
 
 [start]
-# Start FastAPI (which now serves the built frontend)
-# CRITICAL: This is the runtime command
-cmd = "cd src/backend && python -m uvicorn main:app --host 0.0.0.0 --port $PORT"
+# Start FastAPI server
+cmd = "cd src/backend && python3.11 -m uvicorn main:app --host 0.0.0.0 --port $PORT"
 
