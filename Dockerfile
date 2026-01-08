@@ -1,34 +1,42 @@
 # ==========================================
-# DeFraudAI - Unified Full-Stack Dockerfile
+# DeFraudAI - Optimized Full-Stack Dockerfile
+# Target: < 4GB image size
 # ==========================================
 
 # Stage 1: Build Frontend
-FROM node:20-slim AS frontend-builder
+FROM node:20-alpine AS frontend-builder
 
 WORKDIR /app
 
 # Copy package files and install deps
 COPY package*.json ./
-RUN npm ci
+RUN npm ci --only=production
 
 # Copy source and build
 COPY . .
 RUN npm run build
 
 # Stage 2: Production Runtime
-FROM python:3.11-slim
+FROM python:3.11-slim-bookworm
 
 WORKDIR /app
 
-# Install system dependencies for ML libraries
+# Install minimal system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
-    libffi-dev \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
 
-# Copy Python requirements and install
+# Copy requirements first for better caching
 COPY src/backend/requirements.txt ./requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+
+# Install Python dependencies with optimizations
+# --no-cache-dir: Don't cache pip packages
+# Using CPU-only PyTorch from requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt \
+    && rm -rf /root/.cache/pip \
+    && rm -rf /root/.cache/huggingface \
+    && find /usr/local -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
 
 # Copy backend code
 COPY src/backend/ ./src/backend/
@@ -39,7 +47,7 @@ COPY --from=frontend-builder /app/dist ./dist
 # Set working directory to backend
 WORKDIR /app/src/backend
 
-# Expose port (Railway sets PORT env var)
+# Expose port
 EXPOSE 8000
 
 # Start the server
