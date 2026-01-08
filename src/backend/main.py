@@ -193,6 +193,14 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type", "Accept"],
 )
 
+# Debug Middleware: Log every request to help diagnose 404/405 issues
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    # Print to stdout so it shows up in Railway logs
+    print(f"HIT: {request.method} {request.url.path}")
+    response = await call_next(request)
+    return response
+
 # ============================================
 # Security: JWT Authentication Dependency
 # ============================================
@@ -525,15 +533,7 @@ def analyze_with_local_model(image: Image.Image) -> dict:
 # Public Endpoints
 # ============================================
 
-@app.get("/")
-def read_root():
-    status_msg = "Deepfake Detection API is running" if pipe else "Model failed to load"
-    return {
-        "status": status_msg, 
-        "model": "dima806/deepfake_vs_real_image_detection",
-        "gemini_configured": bool(GEMINI_API_KEY),
-        "version": "2.0.0-secure"
-    }
+
 
 @app.get("/health")
 async def health_check():
@@ -1068,6 +1068,7 @@ if frontend_dist.exists():
     # Catch-all for React Router (must be last)
     @app.get("/{full_path:path}")
     async def serve_spa_catch_all(full_path: str):
+        print(f"SPA_CATCH_ALL matched: '{full_path}'")
         # Passthrough for API routes that weren't matched (returns 404 JSON instead of HTML)
         if full_path.startswith("api/") or full_path.startswith("docs") or full_path.startswith("openapi.json"):
              raise HTTPException(status_code=404, detail="Not Found")
@@ -1077,6 +1078,15 @@ if frontend_dist.exists():
 else:
     print(f"Warning: Frontend build not found at {frontend_dist}. Running in API-only mode.")
 
+
+
+# Debug: Log all registered routes to verify API endpoints exist
+print("=== REGISTERED ROUTES START ===")
+for route in app.routes:
+    if hasattr(route, "path"):
+        methods = ",".join(route.methods) if hasattr(route, "methods") else "ALL"
+        print(f"ROUTE: {route.path} [{methods}]")
+print("=== REGISTERED ROUTES END ===")
 
 if __name__ == "__main__":
     import uvicorn
