@@ -1,4 +1,4 @@
-import { SignInButton, SignUpButton } from "@clerk/clerk-react";
+import { Link } from "react-router-dom";
 import { ArrowRight, ShieldCheck, Sparkles, Users, Workflow } from "lucide-react";
 import ParticleBackground from "../components/common/ParticleBackground";
 import FloatingCard from "../components/common/FloatingCard";
@@ -84,16 +84,16 @@ export default function LandingPage() {
               DeFraudAI gives your organisation a single lens to inspect stories, media, and sources before they impact your audience. Built by analysts, hardened for the speed of modern deception.
             </p>
             <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
-              <SignInButton mode="modal" afterSignInUrl="/app" afterSignUpUrl="/app">
+              <Link to="/login">
                 <Button size="lg" className="w-full sm:w-auto">
                   Get Started <ArrowRight className="w-5 h-5 ml-2" />
                 </Button>
-              </SignInButton>
-              <SignUpButton mode="modal" afterSignUpUrl="/app" afterSignInUrl="/app">
+              </Link>
+              <Link to="/register">
                 <Button variant="outline" size="lg" className="w-full sm:w-auto">
                   Create a Team Workspace
                 </Button>
-              </SignUpButton>
+              </Link>
             </div>
           </section>
 
@@ -115,7 +115,7 @@ export default function LandingPage() {
                 Why teams choose DeFraudAI
               </h2>
               <p className="text-slate-300 text-lg leading-relaxed">
-                We don’t just flag suspicious content—we expose the context behind it. Our analysts-in-the-loop approach means every AI insight is paired with transparent evidence, escalation guidance, and the operational tooling teams need to act.
+                We don't just flag suspicious content—we expose the context behind it. Our analysts-in-the-loop approach means every AI insight is paired with transparent evidence, escalation guidance, and the operational tooling teams need to act.
               </p>
             </div>
             <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -131,7 +131,7 @@ export default function LandingPage() {
           <section className="max-w-6xl mx-auto mt-28" id="exclusives">
             <FloatingCard className="p-10 border border-blue-500/20 bg-blue-950/30 backdrop-blur-xl">
               <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
-                Exclusive capabilities you won’t find elsewhere
+                Exclusive capabilities you won't find elsewhere
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {exclusives.map((entry) => (
@@ -151,11 +151,11 @@ export default function LandingPage() {
                 Launch your secured workspace and invite analysts in minutes. Start by signing in to access the verification suite.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
-                <SignInButton mode="modal" afterSignInUrl="/app" afterSignUpUrl="/app">
+                <Link to="/login">
                   <Button size="lg" className="w-full sm:w-auto">
                     Sign in to Continue
                   </Button>
-                </SignInButton>
+                </Link>
                 <Button
                   as="a"
                   href="/mission"

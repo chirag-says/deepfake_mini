@@ -1,13 +1,7 @@
 import { useState } from "react";
-import { Link, NavLink } from "react-router-dom";
-import { Menu, X } from "lucide-react";
-import {
-  SignedIn,
-  SignedOut,
-  SignInButton,
-  SignUpButton,
-  UserButton,
-} from "@clerk/clerk-react";
+import { Link, NavLink, useNavigate } from "react-router-dom";
+import { Menu, X, LogOut, User } from "lucide-react";
+import { useAuth } from "../../shared/context/AuthContext";
 import Button from "../common/Button";
 
 const signedInNav = [
@@ -28,9 +22,17 @@ const signedOutNav = [
 
 export default function SiteHeader() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const { isLoggedIn, user, logout } = useAuth();
+  const navigate = useNavigate();
 
   const toggleMobileNav = () => setMobileNavOpen((prev) => !prev);
   const closeMobileNav = () => setMobileNavOpen(false);
+
+  const handleLogout = () => {
+    logout();
+    closeMobileNav();
+    navigate("/");
+  };
 
   return (
     <>
@@ -55,52 +57,65 @@ export default function SiteHeader() {
             </Link>
 
             <div className="hidden md:flex items-center space-x-6">
-              <SignedIn>
-                <nav className="flex space-x-2">
-                  {signedInNav.map((item) => (
-                    <NavLink
-                      key={item.to}
-                      to={item.to}
-                      onClick={closeMobileNav}
-                      className={({ isActive }) =>
-                        `text-slate-300 hover:text-white px-3 py-2 rounded-xl transition-colors ${isActive ? "bg-blue-500/20 text-white" : ""
-                        }`
-                      }
-                    >
-                      {item.label}
-                    </NavLink>
-                  ))}
-                </nav>
-                <UserButton afterSignOutUrl="/" appearance={{ baseTheme: "dark" }} />
-              </SignedIn>
+              {isLoggedIn ? (
+                <>
+                  <nav className="flex space-x-2">
+                    {signedInNav.map((item) => (
+                      <NavLink
+                        key={item.to}
+                        to={item.to}
+                        onClick={closeMobileNav}
+                        className={({ isActive }) =>
+                          `text-slate-300 hover:text-white px-3 py-2 rounded-xl transition-colors ${isActive ? "bg-blue-500/20 text-white" : ""
+                          }`
+                        }
+                      >
+                        {item.label}
+                      </NavLink>
+                    ))}
+                  </nav>
 
-              <SignedOut>
-                <nav className="flex space-x-2">
-                  {signedOutNav.map((item) => (
-                    <NavLink
-                      key={item.to}
-                      to={item.to}
-                      onClick={closeMobileNav}
-                      className={({ isActive }) =>
-                        `text-slate-300 hover:text-white px-3 py-2 rounded-xl transition-colors ${isActive ? "bg-blue-500/20 text-white" : ""
-                        }`
-                      }
-                    >
-                      {item.label}
-                    </NavLink>
-                  ))}
-                </nav>
-                <div className="flex items-center gap-3">
-                  <SignInButton mode="modal" afterSignInUrl="/app" afterSignUpUrl="/app">
-                    <Button variant="outline" size="sm">
-                      Sign in
+                  {/* User Menu */}
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800/50 border border-slate-700/50">
+                      <User className="w-4 h-4 text-blue-400" />
+                      <span className="text-sm text-slate-300">{user?.name || user?.email}</span>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={handleLogout}>
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Logout
                     </Button>
-                  </SignInButton>
-                  <SignUpButton mode="modal" afterSignUpUrl="/app" afterSignInUrl="/app">
-                    <Button size="sm">Get started</Button>
-                  </SignUpButton>
-                </div>
-              </SignedOut>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <nav className="flex space-x-2">
+                    {signedOutNav.map((item) => (
+                      <NavLink
+                        key={item.to}
+                        to={item.to}
+                        onClick={closeMobileNav}
+                        className={({ isActive }) =>
+                          `text-slate-300 hover:text-white px-3 py-2 rounded-xl transition-colors ${isActive ? "bg-blue-500/20 text-white" : ""
+                          }`
+                        }
+                      >
+                        {item.label}
+                      </NavLink>
+                    ))}
+                  </nav>
+                  <div className="flex items-center gap-3">
+                    <Link to="/login">
+                      <Button variant="outline" size="sm">
+                        Sign in
+                      </Button>
+                    </Link>
+                    <Link to="/register">
+                      <Button size="sm">Get started</Button>
+                    </Link>
+                  </div>
+                </>
+              )}
             </div>
 
             <Button
@@ -123,61 +138,70 @@ export default function SiteHeader() {
 
       {mobileNavOpen && (
         <div className="md:hidden fixed inset-0 z-30 bg-slate-900/95 backdrop-blur-xl">
-          <div className="max-w-7xl mx-auto px-6 py-8 space-y-6">
-            <SignedIn>
-              <nav className="space-y-3">
-                {signedInNav.map((item) => (
-                  <NavLink
-                    key={item.to}
-                    to={item.to}
-                    onClick={closeMobileNav}
-                    className={({ isActive }) =>
-                      `block text-lg font-medium px-4 py-3 rounded-xl transition-colors ${isActive
-                        ? "bg-blue-500/20 text-white"
-                        : "text-slate-300 hover:text-white"
-                      }`
-                    }
-                  >
-                    {item.label}
-                  </NavLink>
-                ))}
-              </nav>
+          <div className="max-w-7xl mx-auto px-6 py-8 space-y-6 pt-24">
+            {isLoggedIn ? (
+              <>
+                <nav className="space-y-3">
+                  {signedInNav.map((item) => (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      onClick={closeMobileNav}
+                      className={({ isActive }) =>
+                        `block text-lg font-medium px-4 py-3 rounded-xl transition-colors ${isActive
+                          ? "bg-blue-500/20 text-white"
+                          : "text-slate-300 hover:text-white"
+                        }`
+                      }
+                    >
+                      {item.label}
+                    </NavLink>
+                  ))}
+                </nav>
 
-              <div className="pt-4">
-                <UserButton afterSignOutUrl="/" appearance={{ baseTheme: "dark" }} />
-              </div>
-            </SignedIn>
-
-            <SignedOut>
-              <nav className="space-y-3">
-                {signedOutNav.map((item) => (
-                  <NavLink
-                    key={item.to}
-                    to={item.to}
-                    onClick={closeMobileNav}
-                    className={({ isActive }) =>
-                      `block text-lg font-medium px-4 py-3 rounded-xl transition-colors ${isActive
-                        ? "bg-blue-500/20 text-white"
-                        : "text-slate-300 hover:text-white"
-                      }`
-                    }
-                  >
-                    {item.label}
-                  </NavLink>
-                ))}
-              </nav>
-
-              <div className="grid grid-cols-1 gap-3 pt-6">
-                <SignInButton mode="modal" afterSignInUrl="/app" afterSignUpUrl="/app">
-                  <Button variant="outline" className="w-full">
-                    Sign in
+                <div className="pt-4 space-y-4">
+                  <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-slate-800/50 border border-slate-700/50">
+                    <User className="w-5 h-5 text-blue-400" />
+                    <span className="text-slate-300">{user?.name || user?.email}</span>
+                  </div>
+                  <Button variant="outline" className="w-full" onClick={handleLogout}>
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Logout
                   </Button>
-                </SignInButton>
-                <SignUpButton mode="modal" afterSignUpUrl="/app" afterSignInUrl="/app">
-                  <Button className="w-full">Create account</Button>
-                </SignUpButton>
-              </div>
-            </SignedOut>
+                </div>
+              </>
+            ) : (
+              <>
+                <nav className="space-y-3">
+                  {signedOutNav.map((item) => (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      onClick={closeMobileNav}
+                      className={({ isActive }) =>
+                        `block text-lg font-medium px-4 py-3 rounded-xl transition-colors ${isActive
+                          ? "bg-blue-500/20 text-white"
+                          : "text-slate-300 hover:text-white"
+                        }`
+                      }
+                    >
+                      {item.label}
+                    </NavLink>
+                  ))}
+                </nav>
+
+                <div className="grid grid-cols-1 gap-3 pt-6">
+                  <Link to="/login" onClick={closeMobileNav}>
+                    <Button variant="outline" className="w-full">
+                      Sign in
+                    </Button>
+                  </Link>
+                  <Link to="/register" onClick={closeMobileNav}>
+                    <Button className="w-full">Create account</Button>
+                  </Link>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
