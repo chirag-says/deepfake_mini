@@ -176,8 +176,9 @@ async def get_user_by_id(user_id: str) -> Optional[Dict]:
             user["_id"] = str(user["_id"])
             del user["password_hash"]
             return user
-    except:
-        pass
+    except Exception as e:
+        # Log error for debugging (invalid ObjectId, DB errors, etc.)
+        print(f"Error getting user by ID {user_id}: {e}")
     return None
 
 
@@ -197,16 +198,39 @@ async def get_user_by_email(email: str) -> Optional[Dict]:
 
 
 async def update_user(user_id: str, update_data: Dict) -> bool:
-    """Update user profile"""
+    """
+    Update user profile with strict field validation.
+    
+    SECURITY: Only whitelisted fields can be updated to prevent
+    privilege escalation via mass assignment attacks.
+    """
     if db is None:
         return False
     
-    collection = db["users"]
-    update_data["updated_at"] = datetime.utcnow()
+    # SECURITY: Whitelist of allowed update fields
+    # This prevents attackers from modifying sensitive fields like:
+    # - password_hash (account takeover)
+    # - is_admin (privilege escalation)
+    # - email (account hijacking)
+    ALLOWED_UPDATE_FIELDS = {"name", "profile"}
     
+    # Sanitize: only keep allowed fields
+    sanitized_data = {
+        key: value 
+        for key, value in update_data.items() 
+        if key in ALLOWED_UPDATE_FIELDS
+    }
+    
+    # If nothing valid to update, return early
+    if not sanitized_data:
+        return False
+    
+    sanitized_data["updated_at"] = datetime.utcnow()
+    
+    collection = db["users"]
     result = await collection.update_one(
         {"_id": ObjectId(user_id)},
-        {"$set": update_data}
+        {"$set": sanitized_data}
     )
     return result.modified_count > 0
 
@@ -274,7 +298,8 @@ async def get_analysis_by_id(analysis_id: str, user_id: str) -> Optional[Dict]:
             doc["_id"] = str(doc["_id"])
             doc["id"] = doc["_id"]
         return doc
-    except:
+    except Exception as e:
+        print(f"Error getting analysis {analysis_id}: {e}")
         return None
 
 
@@ -291,7 +316,8 @@ async def delete_analysis(analysis_id: str, user_id: str) -> bool:
             "user_id": user_id
         })
         return result.deleted_count > 0
-    except:
+    except Exception as e:
+        print(f"Error deleting analysis {analysis_id}: {e}")
         return False
 
 

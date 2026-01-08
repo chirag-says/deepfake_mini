@@ -3,7 +3,7 @@ DeFraudAI Backend - Security Hardened
 Implements secure authentication, rate limiting, input validation, and API proxying
 """
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Request, status
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr, Field
@@ -13,7 +13,7 @@ from slowapi.errors import RateLimitExceeded
 import torch
 import torch.nn as nn
 from torchvision import models, transforms
-from PIL import Image
+from PIL import Image, ImageChops, ImageEnhance, ExifTags
 import io
 import numpy as np
 import os
@@ -52,6 +52,7 @@ print(f"VITE_GEMINI_API_KEY loaded: {'Yes' if os.environ.get('VITE_GEMINI_API_KE
 
 # GEMINI API - Server-side only (never exposed to client)
 GEMINI_API_KEY = os.environ.get("VITE_GEMINI_API_KEY", "")
+print(f"GEMINI_API_KEY value: '{GEMINI_API_KEY[:10]}...' (len={len(GEMINI_API_KEY)})" if GEMINI_API_KEY else "GEMINI_API_KEY is EMPTY!")
 GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
 
 # CORS Configuration - Restrictive origins
@@ -70,10 +71,53 @@ ALLOWED_MIME_TYPES = {
 }
 
 # ============================================
+# Cookie-Based Authentication Configuration
+# ============================================
+
+# Cookie settings for secure JWT storage
+COOKIE_NAME = "defraudai_session"
+COOKIE_MAX_AGE = 60 * 60 * 24 * 7  # 7 days in seconds
+
+# Determine if running in production (Railway sets PORT)
+IS_PRODUCTION = os.environ.get("RAILWAY_ENVIRONMENT") or os.environ.get("VERCEL")
+
+# Cookie security settings
+# - HttpOnly: Prevents JavaScript access (XSS protection)
+# - Secure: Only sent over HTTPS (required in production)
+# - SameSite: CSRF protection (Lax allows navigational requests)
+COOKIE_SECURE = bool(IS_PRODUCTION)  # True in production, False in dev
+COOKIE_SAMESITE = "lax"  # "lax" allows cross-site navigation, blocks cross-site POST
+COOKIE_HTTPONLY = True  # Always true - prevents XSS token theft
+COOKIE_PATH = "/"  # Available on all routes
+
+# ============================================
 # Rate Limiting Setup
 # ============================================
 
-limiter = Limiter(key_func=get_remote_address)
+def get_real_client_ip(request: Request) -> str:
+    """
+    Extract real client IP from behind Railway/Vercel proxy.
+    
+    SECURITY: Only trust X-Forwarded-For in production where the proxy is trusted.
+    The leftmost IP in the chain is the original client.
+    """
+    # Check X-Forwarded-For header (set by Railway, Vercel, etc.)
+    forwarded_for = request.headers.get("X-Forwarded-For", "")
+    if forwarded_for:
+        # Take the leftmost IP (original client), strip whitespace
+        client_ip = forwarded_for.split(",")[0].strip()
+        if client_ip:
+            return client_ip
+    
+    # Fallback to X-Real-IP (some proxies use this)
+    real_ip = request.headers.get("X-Real-IP", "")
+    if real_ip:
+        return real_ip.strip()
+    
+    # Final fallback to direct connection IP
+    return get_remote_address(request)
+
+limiter = Limiter(key_func=get_real_client_ip)
 
 # ============================================
 # Pydantic Models for Request/Response Validation
@@ -106,13 +150,29 @@ class GeminiImageAnalysisRequest(BaseModel):
     analysis_type: str = Field(default="deepfake")
 
 # ============================================
+# Lifespan Events (modern pattern)
+# ============================================
+
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Modern lifespan handler for startup/shutdown."""
+    # Startup: Initialize database connection
+    await connect_to_mongodb()
+    yield
+    # Shutdown: Close database connection
+    await close_mongodb_connection()
+
+# ============================================
 # Initialize FastAPI with Rate Limiting
 # ============================================
 
 app = FastAPI(
     title="DeFraudAI API",
     description="Secure Deepfake Detection API",
-    version="2.0.0"
+    version="2.0.0",
+    lifespan=lifespan  # Use modern lifespan handler
 )
 
 # Add rate limit exception handler
@@ -134,16 +194,41 @@ app.add_middleware(
 
 security = HTTPBearer(auto_error=False)
 
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+def extract_token_from_request(request: Request, credentials: Optional[HTTPAuthorizationCredentials]) -> Optional[str]:
+    """
+    Extract JWT token from request, checking multiple sources.
+    
+    Priority:
+    1. HttpOnly cookie (most secure - browser clients)
+    2. Authorization Bearer header (for API clients, backward compat)
+    
+    SECURITY: Cookie takes priority because it's HttpOnly (XSS-proof).
+    """
+    # Priority 1: Check HttpOnly cookie
+    cookie_token = request.cookies.get(COOKIE_NAME)
+    if cookie_token:
+        return cookie_token
+    
+    # Priority 2: Check Authorization header (backward compat for API clients)
+    if credentials and credentials.credentials:
+        return credentials.credentials
+    
+    return None
+
+async def get_current_user(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
     """Validate JWT token and return user data"""
-    if not credentials:
+    token = extract_token_from_request(request, credentials)
+    
+    if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication required",
             headers={"WWW-Authenticate": "Bearer"}
         )
     
-    token = credentials.credentials
     payload = decode_access_token(token)
     
     if not payload:
@@ -171,17 +256,22 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     
     return user
 
-async def get_optional_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+async def get_optional_user(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
     """Optional authentication - returns None if no valid token"""
-    if not credentials:
+    token = extract_token_from_request(request, credentials)
+    
+    if not token:
         return None
     
     try:
-        token = credentials.credentials
         payload = decode_access_token(token)
         if payload and payload.get("sub"):
             return await get_user_by_id(payload["sub"])
-    except:
+    except Exception:
+        # Log for debugging but don't expose to user
         pass
     return None
 
@@ -303,46 +393,128 @@ def analyze_with_gemini(image_bytes: bytes, mime_type: str = "image/jpeg") -> di
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
+def perform_ela(image: Image.Image, quality: int = 90) -> float:
+    """
+    Perform Error Level Analysis (ELA) to detect manipulation.
+    Returns a score from 0-100 indicating likelihood of manipulation.
+    """
+    try:
+        # Save compressed version to memory
+        buffer = io.BytesIO()
+        image.convert("RGB").save(buffer, "JPEG", quality=quality)
+        buffer.seek(0)
+        
+        # Open compressed version
+        compressed_image = Image.open(buffer)
+        
+        # Calculate difference
+        ela_image = ImageChops.difference(image.convert("RGB"), compressed_image)
+        
+        # Get extrema (max difference)
+        extrema = ela_image.getextrema()
+        max_diff = max([ex[1] for ex in extrema])
+        
+        # Scale to 0-100 (higher diff = higher likelihood of manipulation)
+        # Threshold: diff > 10-15 usually indicates editing
+        score = min((max_diff / 20.0) * 100, 100)
+        return score
+    except Exception as e:
+        print(f"ELA Error: {e}")
+        return 0
+
+def clean_metadata(image: Image.Image) -> dict:
+    """Extract and analyze metadata for editing traces."""
+    meta_score = 0
+    traces = []
+    
+    try:
+        exif = image.getexif()
+        if exif:
+            for tag_id, value in exif.items():
+                tag = ExifTags.TAGS.get(tag_id, tag_id)
+                value_str = str(value).lower()
+                
+                # Look for editing software
+                if "software" in str(tag).lower():
+                    if any(x in value_str for x in ["adobe", "photoshop", "gimp", "paint", "canvas", "edit"]):
+                        meta_score = 80
+                        traces.append(f"Editing software detected: {value}")
+    except Exception:
+        pass
+        
+    return {"score": meta_score, "traces": traces}
+
 def analyze_with_local_model(image: Image.Image) -> dict:
-    """Analyze image using local HuggingFace model"""
+    """
+    Comprehensive Local Analysis (Ensemble of One)
+    Combines:
+    1. ViT Deepfake Model (Visual)
+    2. ELA Analysis (Digital Artifacts)
+    3. Metadata Forensics (File History)
+    """
     if not pipe:
         return {"status": "error", "message": "Local model not loaded"}
     
     try:
+        # 1. VSION MODEL ANALYSIS
         results = pipe(image)
-        fake_score = 0
+        deepfake_score = 0
         real_score = 0
         
         for r in results:
             label = r['label'].lower()
             score = r['score'] * 100
-            
             if 'fake' in label:
-                fake_score = score
+                deepfake_score = score
             elif 'real' in label or 'true' in label:
                 real_score = score
         
+        # 2. ELA ANALYSIS
+        ela_score = perform_ela(image)
+        
+        # 3. METADATA ANALYSIS
+        metadata = clean_metadata(image)
+        
+        # --- ENSEMBLE LOGIC ---
+        
+        # Weighted Final Score
+        # Model: 70%, ELA: 20%, Metadata: 10%
+        final_fake_score = (deepfake_score * 0.7) + (ela_score * 0.2) + (metadata["score"] * 0.1)
+        
+        is_fake = final_fake_score > 50
+        
+        # Generate Explanations
+        reasons = []
+        if deepfake_score > 60:
+            reasons.append(f"Visual artifacts detected ({int(deepfake_score)}% confidence)")
+        if ela_score > 50:
+            reasons.append("Digital compression anomalies detected (ELA)")
+        reasons.extend(metadata["traces"])
+        
+        if not reasons and is_fake:
+            reasons.append("Combined heuristic threshold exceeded")
+        elif not reasons:
+            reasons.append("No significant manipulation traces found")
+
         return {
-            "is_fake": fake_score > real_score,
-            "confidence": fake_score if fake_score > real_score else real_score,
-            "probabilities": {"real": round(real_score, 2), "fake": round(fake_score, 2)}
+            "is_fake": is_fake,
+            "confidence": round(final_fake_score if is_fake else (100 - final_fake_score), 2),
+            "probabilities": {
+                "real": round(100 - final_fake_score, 2),
+                "fake": round(final_fake_score, 2)
+            },
+            "reasons": reasons,
+            "factors": {
+                "model_score": round(deepfake_score, 2),
+                "ela_score": round(ela_score, 2),
+                "metadata_traces": len(metadata["traces"])
+            }
         }
     except Exception as e:
+        print(f"Analysis Error: {e}")
         return {"status": "error", "message": str(e)}
 
-# ============================================
-# Lifecycle Events
-# ============================================
-
-@app.on_event("startup")
-async def startup_event():
-    """Initialize database connection on startup"""
-    await connect_to_mongodb()
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Close database connection on shutdown"""
-    await close_mongodb_connection()
+# (Lifespan events are handled by the lifespan context manager above)
 
 # ============================================
 # Public Endpoints
@@ -359,9 +531,38 @@ def read_root():
     }
 
 @app.get("/health")
-def health_check():
-    """Health check endpoint for monitoring"""
-    return {"status": "healthy", "model_loaded": pipe is not None}
+async def health_check():
+    """
+    Health check endpoint for monitoring.
+    
+    Checks:
+    - API server status
+    - ML model loaded
+    - Database connectivity
+    """
+    from database import db
+    
+    # Check database connection
+    db_healthy = False
+    try:
+        if db is not None:
+            # Ping the database to verify connection
+            await db.command("ping")
+            db_healthy = True
+    except Exception as e:
+        print(f"Database health check failed: {e}")
+    
+    # Overall health depends on critical components
+    is_healthy = db_healthy  # DB is required; model is optional
+    
+    return {
+        "status": "healthy" if is_healthy else "degraded",
+        "checks": {
+            "database": "connected" if db_healthy else "disconnected",
+            "model": "loaded" if pipe is not None else "not_loaded",
+            "gemini": "configured" if GEMINI_API_KEY else "not_configured"
+        }
+    }
 
 # ============================================
 # Authentication Endpoints
@@ -369,8 +570,13 @@ def health_check():
 
 @app.post("/api/register", response_model=TokenResponse)
 @limiter.limit("5/minute")
-async def register(request: Request, user_data: UserRegister):
-    """Register a new user account"""
+async def register(request: Request, response: Response, user_data: UserRegister):
+    """
+    Register a new user account.
+    
+    SECURITY: Sets HttpOnly cookie for browser clients.
+    Also returns token in body for backward compatibility with API clients.
+    """
     user = await create_user(
         email=user_data.email,
         password=user_data.password,
@@ -386,6 +592,17 @@ async def register(request: Request, user_data: UserRegister):
     # Create JWT token
     access_token = create_access_token(data={"sub": user["_id"]})
     
+    # Set HttpOnly cookie for secure browser authentication
+    response.set_cookie(
+        key=COOKIE_NAME,
+        value=access_token,
+        max_age=COOKIE_MAX_AGE,
+        httponly=COOKIE_HTTPONLY,
+        secure=COOKIE_SECURE,
+        samesite=COOKIE_SAMESITE,
+        path=COOKIE_PATH
+    )
+    
     return TokenResponse(
         access_token=access_token,
         user={
@@ -397,8 +614,13 @@ async def register(request: Request, user_data: UserRegister):
 
 @app.post("/api/login", response_model=TokenResponse)
 @limiter.limit("10/minute")
-async def login(request: Request, credentials: UserLogin):
-    """Authenticate user and return JWT token"""
+async def login(request: Request, response: Response, credentials: UserLogin):
+    """
+    Authenticate user and return JWT token.
+    
+    SECURITY: Sets HttpOnly cookie for browser clients.
+    Also returns token in body for backward compatibility with API clients.
+    """
     user = await authenticate_user(
         email=credentials.email,
         password=credentials.password
@@ -412,6 +634,17 @@ async def login(request: Request, credentials: UserLogin):
     
     # Create JWT token
     access_token = create_access_token(data={"sub": user["_id"]})
+    
+    # Set HttpOnly cookie for secure browser authentication
+    response.set_cookie(
+        key=COOKIE_NAME,
+        value=access_token,
+        max_age=COOKIE_MAX_AGE,
+        httponly=COOKIE_HTTPONLY,
+        secure=COOKIE_SECURE,
+        samesite=COOKIE_SAMESITE,
+        path=COOKIE_PATH
+    )
     
     return TokenResponse(
         access_token=access_token,
@@ -432,6 +665,24 @@ async def get_current_user_info(user: dict = Depends(get_current_user)):
         "profile": user.get("profile", {})
     }
 
+@app.post("/api/logout")
+async def logout(response: Response):
+    """
+    Logout user by clearing the session cookie.
+    
+    SECURITY: Clears the HttpOnly cookie, effectively logging out the user.
+    Note: The JWT itself remains valid until expiry, but the browser
+    will no longer send it. For full invalidation, see token blacklist.
+    """
+    response.delete_cookie(
+        key=COOKIE_NAME,
+        path=COOKIE_PATH,
+        httponly=COOKIE_HTTPONLY,
+        secure=COOKIE_SECURE,
+        samesite=COOKIE_SAMESITE
+    )
+    return {"message": "Logged out successfully"}
+
 @app.get("/api/user/stats")
 async def get_user_statistics(user: dict = Depends(get_current_user)):
     """Get user analysis statistics"""
@@ -439,14 +690,39 @@ async def get_user_statistics(user: dict = Depends(get_current_user)):
     return stats
 
 @app.get("/api/user/history")
-async def get_analysis_history(
+async def get_analysis_history_endpoint(
     limit: int = 50,
     skip: int = 0,
     user: dict = Depends(get_current_user)
 ):
     """Get user analysis history"""
     analyses = await get_user_analyses(user["_id"], limit=limit, skip=skip)
-    return {"analyses": analyses}
+    # Return as array for frontend compatibility
+    return analyses
+
+@app.delete("/api/user/history/{analysis_id}")
+async def delete_analysis_endpoint(
+    analysis_id: str,
+    user: dict = Depends(get_current_user)
+):
+    """Delete a specific analysis from history"""
+    from database import delete_analysis
+    success = await delete_analysis(analysis_id, user["_id"])
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Analysis not found or already deleted"
+        )
+    return {"message": "Analysis deleted"}
+
+@app.delete("/api/user/history/clear")
+async def clear_history_endpoint(
+    user: dict = Depends(get_current_user)
+):
+    """Clear all analysis history for the user"""
+    from database import clear_user_history
+    deleted_count = await clear_user_history(user["_id"])
+    return {"message": f"Cleared {deleted_count} analyses"}
 
 # ============================================
 # Gemini Proxy Endpoint (Secure Server-Side)
@@ -463,6 +739,7 @@ async def gemini_proxy(
     Secure proxy for Gemini API calls.
     The API key is kept server-side and never exposed to the client.
     """
+    print(f"DEBUG: GEMINI_API_KEY in endpoint = '{GEMINI_API_KEY[:10] if GEMINI_API_KEY else 'EMPTY'}...'")
     if not GEMINI_API_KEY:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -564,11 +841,13 @@ async def gemini_analyze_image(
 @limiter.limit("30/minute")
 async def analyze_image(
     request: Request,
-    file: UploadFile = File(...)
+    file: UploadFile = File(...),
+    user: dict = Depends(get_optional_user)
 ):
     """
-    Analyze a single image for deepfake detection using local model.
-    Includes input validation for file size and MIME type.
+    Analyze a single image for deepfake detection using local multi-factor model.
+    Combines ViT, ELA, and Metadata analysis.
+    Saves result if user is authenticated.
     """
     if not pipe:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Model is not loaded.")
@@ -577,7 +856,6 @@ async def analyze_image(
     validated_mime = validate_mime_type(file.content_type, file.filename)
     
     # Read a small chunk first to check file size without loading entire file
-    # This prevents memory exhaustion attacks
     first_chunk = await file.read(MAX_FILE_SIZE_BYTES + 1)
     if len(first_chunk) > MAX_FILE_SIZE_BYTES:
         raise HTTPException(
@@ -590,54 +868,43 @@ async def analyze_image(
     try:
         image = Image.open(io.BytesIO(contents)).convert("RGB")
         
-        # Inference via Pipeline
-        results = pipe(image)
+        # USE NEW ENHANCED ANALYSIS FUNCTION
+        result = analyze_with_local_model(image)
         
-        fake_score = 0
-        real_score = 0
-        
-        for r in results:
-            label = r['label'].lower()
-            score = r['score'] * 100
+        if result.get("status") == "error":
+            raise HTTPException(status_code=500, detail=result.get("message"))
             
-            if 'fake' in label:
-                fake_score = score
-            elif 'real' in label or 'true' in label:
-                real_score = score
-                
-        is_fake = fake_score > real_score
-        confidence = fake_score if is_fake else real_score
-        
-        # Metadata Forensics (EXIF)
-        metadata_flags = []
-        try:
-            exif_data = image.getexif()
-            if exif_data:
-                for tag_id, value in exif_data.items():
-                    tag = Image.ExifTags.TAGS.get(tag_id, tag_id)
-                    if tag == 'Software':
-                        if any(sw in str(value).lower() for sw in ['adobe', 'photoshop', 'gimp', 'editor', 'canvas', 'paint']):
-                            metadata_flags.append(f"Editing software signature detected: {value}")
-                    if tag == 'Make' and 'fake' in str(value).lower():
-                        metadata_flags.append(f"Suspicious camera make: {value}")
-        except Exception as exif_error:
-            print(f"Metadata scan skipped: {exif_error}")
-
-        return {
-            "filename": file.filename,
-            "is_fake": is_fake,
-            "confidence": round(confidence, 2),
-            "probabilities": {
-                "real": round(real_score, 2),
-                "fake": round(fake_score, 2)
-            },
-            "metadata_flags": metadata_flags,
-            "device_used": "CPU (Transformers)"
+        # Add metadata to response
+        response_data = {
+            "is_fake": result["is_fake"],
+            "confidence": result["confidence"],
+            "probabilities": result["probabilities"],
+            "reasons": result["reasons"],
+            "factors": result["factors"],
+            "method": "ensemble_local_v2"
         }
-
+        
+        # Save to history if user is logged in
+        if user:
+            try:
+                # Convert image to base64 for storage (optional, or just store metadata)
+                # For now we won't store the image itself to save DB space, just the result
+                await save_analysis(
+                    user_id=user["_id"],
+                    file_name=file.filename,
+                    file_type="image",
+                    result=response_data
+                )
+            except Exception as e:
+                print(f"Failed to save analysis history: {e}")
+        
+        return response_data
+        
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"Error analyzing image: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to analyze image")
+        print(f"Endpoint Error: {e}")
+        raise HTTPException(status_code=500, detail="Internal analysis error")
 
 
 @app.post("/analyze-ensemble")

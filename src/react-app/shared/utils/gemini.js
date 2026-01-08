@@ -11,29 +11,21 @@
 // Backend API base URL
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
-// Get auth token from storage (matches AuthContext storage)
-function getAuthToken() {
-  return sessionStorage.getItem("defraudai_token");
-}
-
 /**
- * Make a request to our backend Gemini proxy
+ * Make a request to our backend Gemini proxy.
+ * 
+ * SECURITY: Uses HttpOnly cookies for authentication.
+ * The cookie is automatically sent via credentials: 'include'.
  */
 async function makeProxyRequest(endpoint, body) {
-  const token = getAuthToken();
-
   const headers = {
     "Content-Type": "application/json",
   };
 
-  // Include auth token if available (some endpoints allow anonymous)
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     method: "POST",
     headers,
+    credentials: "include", // Use HttpOnly cookie for auth
     body: JSON.stringify(body),
   });
 

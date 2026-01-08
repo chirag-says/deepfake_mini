@@ -6,39 +6,67 @@ const AuthContext = createContext(null);
 // API base URL - use environment variable or default to localhost
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
-// Token storage keys
-const TOKEN_KEY = "defraudai_token";
+// User storage key (we only store user data now, not the token)
+// Token is stored in HttpOnly cookie by the backend
 const USER_KEY = "defraudai_user";
 
 export function AuthProvider({ children }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Initialize auth state from storage on mount
+  /**
+   * Verify auth status on mount by checking with the server.
+   * 
+   * SECURITY: We no longer rely on sessionStorage for auth state.
+   * Instead, we verify with the server using the HttpOnly cookie.
+   * This prevents XSS attacks from stealing tokens.
+   */
   useEffect(() => {
-    const storedToken = sessionStorage.getItem(TOKEN_KEY);
-    const storedUser = sessionStorage.getItem(USER_KEY);
-
-    if (storedToken && storedUser) {
+    const verifyAuth = async () => {
       try {
-        const parsedUser = JSON.parse(storedUser);
-        setToken(storedToken);
-        setUser(parsedUser);
-        setIsLoggedIn(true);
-      } catch (e) {
-        // Invalid stored data, clear it
-        sessionStorage.removeItem(TOKEN_KEY);
-        sessionStorage.removeItem(USER_KEY);
+        // Try to get user info using the HttpOnly cookie
+        const response = await fetch(`${API_BASE_URL}/api/me`, {
+          credentials: "include", // CRITICAL: Include cookies in request
+        });
+
+        if (response.ok) {
+          const userData = await response.json();
+          setUser(userData);
+          setIsLoggedIn(true);
+          // Cache user data for faster subsequent loads
+          sessionStorage.setItem(USER_KEY, JSON.stringify(userData));
+        } else {
+          // Cookie invalid or expired
+          setUser(null);
+          setIsLoggedIn(false);
+          sessionStorage.removeItem(USER_KEY);
+        }
+      } catch (error) {
+        // Network error - try cached user data for offline support
+        const cachedUser = sessionStorage.getItem(USER_KEY);
+        if (cachedUser) {
+          try {
+            setUser(JSON.parse(cachedUser));
+            setIsLoggedIn(true);
+          } catch {
+            sessionStorage.removeItem(USER_KEY);
+          }
+        }
+        console.error("Auth verification failed:", error);
+      } finally {
+        setIsLoading(false);
       }
-    }
-    setIsLoading(false);
+    };
+
+    verifyAuth();
   }, []);
 
   /**
-   * Make an authenticated API request
-   * Automatically includes the JWT token in headers
+   * Make an authenticated API request.
+   * 
+   * SECURITY: Uses credentials: 'include' to send HttpOnly cookies.
+   * No token is exposed to JavaScript - completely XSS-proof.
    */
   const authFetch = useCallback(async (endpoint, options = {}) => {
     const url = endpoint.startsWith("http") ? endpoint : `${API_BASE_URL}${endpoint}`;
@@ -48,24 +76,22 @@ export function AuthProvider({ children }) {
       ...options.headers,
     };
 
-    // Add Authorization header if we have a token
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
-
     const response = await fetch(url, {
       ...options,
       headers,
+      credentials: "include", // CRITICAL: Include cookies in request
     });
 
-    // Handle 401 - token expired or invalid
+    // Handle 401 - session expired or invalid
     if (response.status === 401) {
-      logout();
+      setUser(null);
+      setIsLoggedIn(false);
+      sessionStorage.removeItem(USER_KEY);
       throw new Error("Session expired. Please log in again.");
     }
 
     return response;
-  }, [token]);
+  }, []);
 
   /**
    * Register a new user account
@@ -77,6 +103,7 @@ export function AuthProvider({ children }) {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include", // CRITICAL: Allow cookie to be set
         body: JSON.stringify({ email, password, name }),
       });
 
@@ -89,11 +116,9 @@ export function AuthProvider({ children }) {
         };
       }
 
-      // Store token securely in sessionStorage (cleared when browser closes)
-      sessionStorage.setItem(TOKEN_KEY, data.access_token);
+      // Store user data for quick access (token is in HttpOnly cookie)
       sessionStorage.setItem(USER_KEY, JSON.stringify(data.user));
 
-      setToken(data.access_token);
       setUser(data.user);
       setIsLoggedIn(true);
 
@@ -108,8 +133,10 @@ export function AuthProvider({ children }) {
   };
 
   /**
-   * Login with email and password
-   * Makes a real POST request to the backend /api/login endpoint
+   * Login with email and password.
+   * 
+   * SECURITY: The backend sets an HttpOnly cookie with the JWT.
+   * JavaScript never sees or stores the actual token.
    */
   const login = async (email, password) => {
     try {
@@ -118,6 +145,7 @@ export function AuthProvider({ children }) {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include", // CRITICAL: Allow cookie to be set
         body: JSON.stringify({ email, password }),
       });
 
@@ -130,12 +158,9 @@ export function AuthProvider({ children }) {
         };
       }
 
-      // Store token securely in sessionStorage (cleared when browser closes)
-      // For even better security, consider HttpOnly cookies set by the backend
-      sessionStorage.setItem(TOKEN_KEY, data.access_token);
+      // Store user data for quick access (token is in HttpOnly cookie)
       sessionStorage.setItem(USER_KEY, JSON.stringify(data.user));
 
-      setToken(data.access_token);
       setUser(data.user);
       setIsLoggedIn(true);
 
@@ -150,12 +175,23 @@ export function AuthProvider({ children }) {
   };
 
   /**
-   * Logout - clear all auth state and storage
+   * Logout - clear all auth state and call backend to clear cookie.
+   * 
+   * SECURITY: The backend clears the HttpOnly cookie.
    */
-  const logout = useCallback(() => {
-    sessionStorage.removeItem(TOKEN_KEY);
+  const logout = useCallback(async () => {
+    try {
+      // Call backend to clear the HttpOnly cookie
+      await fetch(`${API_BASE_URL}/api/logout`, {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch (error) {
+      console.error("Logout request failed:", error);
+    }
+
+    // Clear local state regardless of backend response
     sessionStorage.removeItem(USER_KEY);
-    setToken(null);
     setUser(null);
     setIsLoggedIn(false);
   }, []);
@@ -164,8 +200,6 @@ export function AuthProvider({ children }) {
    * Refresh user data from the server
    */
   const refreshUser = useCallback(async () => {
-    if (!token) return null;
-
     try {
       const response = await authFetch("/api/me");
       if (response.ok) {
@@ -178,21 +212,20 @@ export function AuthProvider({ children }) {
       console.error("Failed to refresh user:", error);
     }
     return null;
-  }, [token, authFetch]);
+  }, [authFetch]);
 
   const value = useMemo(
     () => ({
       isLoggedIn,
       isLoading,
       user,
-      token,
       login,
       logout,
       register,
       authFetch,
       refreshUser,
     }),
-    [isLoggedIn, isLoading, user, token, logout, authFetch, refreshUser]
+    [isLoggedIn, isLoading, user, logout, authFetch, refreshUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

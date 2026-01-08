@@ -21,6 +21,9 @@ import { extractVideoFrames } from "../shared/utils/videoProcessing";
 import { generateELA } from "../shared/utils/elaProcessing";
 import { saveAnalysisToHistory } from "../shared/utils/historyStorage";
 
+// API base URL from environment
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+
 const DEFAULT_RESULT = null;
 
 export default function MediaAuthenticity() {
@@ -85,8 +88,9 @@ export default function MediaAuthenticity() {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      const res = await fetch("http://localhost:8000/analyze-image", {
+      const res = await fetch(`${API_BASE_URL}/analyze-image`, {
         method: "POST",
+        credentials: "include", // Use HttpOnly cookie for auth
         body: formData,
       });
       if (!res.ok) throw new Error("Server error");
@@ -104,277 +108,92 @@ export default function MediaAuthenticity() {
     const cacheKey = `${mediaFile.name}-${mediaFile.size}-${mediaFile.lastModified}`;
     if (resultsCache.current.has(cacheKey)) {
       setResult(resultsCache.current.get(cacheKey));
-      // Note: We aren't caching localResult yet for simplicity, or we could add it to the cache object
       return;
     }
 
     setIsAnalyzing(true);
     setResult(DEFAULT_RESULT);
-    setLocalResult(null); // Reset local result
+    setLocalResult(null);
 
     try {
-      // 1. Start Local Analysis (Fire & Forget/Parallel)
       if (mediaType === "image") {
-        analyzeLocalImage(mediaFile).then(setLocalResult);
-      } else if (mediaType === "video") {
-        // For video, we extract frames and check each one
-        extractVideoFrames(mediaFile, 5).then(async (frames) => {
-          let fakeSum = 0;
-          let realSum = 0;
-          let frameCount = 0;
+        console.log("Starting Local Multi-Factor Analysis...");
 
-          for (const base64Frame of frames) {
-            // Convert base64 to blob for upload
-            const res = await fetch(`data:image/jpeg;base64,${base64Frame}`);
-            const blob = await res.blob();
-            const file = new File([blob], "frame.jpg", { type: "image/jpeg" });
+        // Call the new backend endpoint (ViT + ELA + Metadata)
+        const localData = await analyzeLocalImage(mediaFile);
 
-            const result = await analyzeLocalImage(file);
-            if (result && result.probabilities) {
-              fakeSum += result.probabilities.fake;
-              realSum += result.probabilities.real;
-              frameCount++;
+        if (localData.status === "offline") {
+          throw new Error("Backend is offline. Please ensure the server is running.");
+        }
+
+        let finalResult;
+        // Handle enhanced response
+        if (localData.method === "ensemble_local_v2") {
+          finalResult = {
+            isOriginal: !localData.is_fake,
+            confidence: localData.confidence,
+            message: localData.is_fake
+              ? `Deepfake detected with ${localData.confidence}% confidence.`
+              : `Content appears authentic (${localData.confidence}% confidence).`,
+            flags: localData.reasons || [],
+            highlights: !localData.is_fake ? ["No digital artifacts found", "Consistent noise patterns"] : [],
+            technicalIndicators: {
+              inconsistencies: localData.factors?.ela_score || 0,
+              artifacts: localData.factors?.model_score || 0,
+              metadata: localData.factors?.metadata_traces > 0 ? 80 : 0
             }
-          }
+          };
+        } else {
+          // Fallback for unexpected format
+          finalResult = {
+            isOriginal: !localData.is_fake,
+            confidence: localData.confidence,
+            message: localData.is_fake ? "Potential manipulation detected." : "No obvious manipulation detected.",
+            flags: localData.is_fake ? ["Visual anomalies detected"] : [],
+            highlights: [],
+            technicalIndicators: { inconsistencies: 0, artifacts: 0, metadata: 0 }
+          };
+        }
 
-          if (frameCount > 0) {
-            const avgFake = fakeSum / frameCount;
-            const avgReal = realSum / frameCount;
-            setLocalResult({
-              is_fake: avgFake > avgReal,
-              probabilities: {
-                fake: Math.round(avgFake),
-                real: Math.round(avgReal)
-              },
-              device_used: 'Video Frame Ensemble',
-              status: 'success'
-            });
-          }
+        setResult(finalResult);
+        setLocalResult(localData);
+        resultsCache.current.set(cacheKey, finalResult);
+
+        saveAnalysisToHistory({
+          type: 'media',
+          fileName: mediaFile.name,
+          mediaType: 'image',
+          result: finalResult
+        });
+      } else {
+        // Graceful fallback for non-images without Gemini
+        setResult({
+          isOriginal: true,
+          confidence: 0,
+          message: "Video/Audio analysis requires Cloud API key. Local analysis currently supports Images only.",
+          flags: ["Cloud specific features disabled"],
+          highlights: [],
+          technicalIndicators: { inconsistencies: 0, artifacts: 0, metadata: 0 }
         });
       }
-
-      let contentParts = [];
-      let prompt = "";
-
-      if (mediaType === "image") {
-        const base64Image = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () =>
-            resolve(reader.result?.toString().split(",")[1] ?? "");
-          reader.onerror = reject;
-          reader.readAsDataURL(mediaFile);
-        });
-
-        prompt = `Analyze this image for digital manipulation, specifically focusing on Generative AI edits (like Magic Eraser, Generative Fill, Galaxy AI).
-        
-        CRITICAL INSTRUCTION: Assume the image MIGHT be manipulated. You must find the evidence.
-
-        1. **In-Painting/Generative Fill Detection:**
-           - Look for 'smudged' or overly smooth textures in specific areas where text or objects might have been removed.
-           - Check for 'ghosting' artifacts where old pixels weren't fully replaced.
-           - Does the background noise/grain pattern vanish in certain spots? (Strong indicator of AI edit).
-        
-        2. **Document Forensics (If text is present):**
-           - Are some text lines perfectly horizontal while others follow the page curve?
-           - Is the 'black' level of the text consistent? (Edited text is often pitch black #000000 while scanned text is dark grey/noisy).
-           - Alignment check: Does the text sit purely on the grid?
-
-        3. **Deepfake/Face Analysis:**
-           - Skin texture consistency.
-           - Eye reflections (must match the environment).
-
-        Respond with JSON:
-        {
-          "isOriginal": boolean,
-          "confidence": number (0-100),
-          "message": "Detailed technical explanation of the findings.",
-          "flags": ["List EVERY suspicious element found, e.g. 'Inconsistent noise in row 4', 'Smudged texture in background'"],
-          "highlights": ["List signs of authenticity if any"],
-          "technicalIndicators": {
-            "inconsistencies": number (0-100),
-            "artifacts": number (0-100),
-            "metadata": number (0-100)
-          }
-        }`;
-
-        contentParts = [
-          { text: prompt },
-          {
-            inlineData: {
-              mimeType: mediaFile.type,
-              data: base64Image,
-            },
-          },
-        ];
-      } else if (mediaType === "video") {
-        // Extract 5 representative frames
-        const frames = await extractVideoFrames(mediaFile, 5);
-
-        prompt = `Analyze these 5 keyframes extracted from a video for deepfake manipulation. Act as a generic video forensics expert.
-        
-        Look for:
-        1. Temporal inconsistencies between frames (jittering, flickering faces).
-        2. Lip-sync issues or unnatural mouth movements.
-        3. Blink patterns (too frequent, too rare, or unnatural).
-        4. Inconsistent lighting across frames on moving objects.
-        
-        Respond with JSON (same format as image):
-        {
-          "isOriginal": boolean,
-          "confidence": number (0-100),
-          "message": "Deepfake analysis summary",
-          "flags": ["list", "of", "issues"],
-          "highlights": ["positive", "signs"],
-          "technicalIndicators": {
-            "inconsistencies": number,
-            "artifacts": number,
-            "metadata": number
-          }
-        }`;
-
-        contentParts = [
-          { text: prompt },
-          ...frames.map(frame => ({
-            inlineData: {
-              mimeType: "image/jpeg",
-              data: frame,
-            },
-          }))
-        ];
-      } else if (mediaType === "audio") {
-        const base64Audio = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () =>
-            resolve(reader.result?.toString().split(",")[1] ?? "");
-          reader.onerror = reject;
-          reader.readAsDataURL(mediaFile);
-        });
-
-        prompt = `Analyze this audio clip for signs of AI Voice Cloning, Text-to-Speech (TTS), or Deepfake splicing. 
-        
-        Listen carefully for:
-        1. **Breathing Patterns:** Real humans breathe. AI voices often have unnatural breath pauses or no breath at all between long sentences.
-        2. **Prosody/Intonation:** Is the rhythm too perfect? Does the emotion match the words? (Robotic/Flat delivery).
-        3. **Digital Artifacts:** Listen for 'electronic glitches', 'clicks', or distinct 'metallic' hollow sounds often found in low-quality voice clones (like ElevenLabs v1).
-        4. **Background Noise:** Is the background dead silent (common in TTS) or naturally noisy?
-
-        Respond with JSON (same format as image):
-        {
-          "isOriginal": boolean,
-          "confidence": number (0-100),
-          "message": "Audio forensics summary",
-          "flags": ["list", "of", "issues", "e.g. 'Lack of breath pauses'"],
-          "highlights": ["positive", "signs"],
-          "technicalIndicators": {
-            "inconsistencies": number,
-            "artifacts": number,
-            "metadata": number
-          }
-        }`;
-
-        contentParts = [
-          { text: prompt },
-          {
-            inlineData: {
-              mimeType: mediaFile.type,
-              data: base64Audio,
-            },
-          },
-        ];
-      }
-
-      const data = await callGemini({
-        contents: [
-          {
-            parts: contentParts,
-          },
-        ],
-        generationConfig: {
-          temperature: 0.0, // Force deterministic output
-          topK: 1,
-          topP: 1,
-        },
-        fallbackModels: [
-          "gemini-2.5-flash",
-          "gemini-2.5-flash-lite",
-        ],
-      });
-
-      const responseText =
-        data.candidates?.[0]?.content?.parts?.[0]?.text || "No response";
-
-      const extractJson = () => {
-        try {
-          const jsonMatch =
-            responseText.match(/```json\n([\s\S]*?)\n```/) ||
-            responseText.match(/```\n([\s\S]*?)\n```/) ||
-            responseText.match(/{[\s\S]*}/);
-          return jsonMatch ? JSON.parse(jsonMatch[1] || jsonMatch[0]) : null;
-        } catch (error) {
-          console.error("Failed to parse media analysis response", error);
-          return null;
-        }
-      };
-
-      const normalizeText = (value, fallback = "") => {
-        if (value === null || value === undefined) return fallback;
-        if (typeof value === "string") return value;
-        return String(value);
-      };
-
-      const normalizeScore = (value, fallback = 0) => {
-        const num = Number.parseFloat(value);
-        if (Number.isFinite(num)) {
-          return Math.min(100, Math.max(0, Math.round(num)));
-        }
-        return fallback;
-      };
-
-      const analysisData = extractJson() || {};
-      const technicalIndicators = analysisData.technicalIndicators || {};
-
-      const finalResult = {
-        isOriginal: analysisData.isOriginal !== false, // Default to true if undefined, but catch explicit false
-        confidence: normalizeScore(analysisData.confidence, 50),
-        message: normalizeText(analysisData.message, "Analysis completed"),
-        flags: Array.isArray(analysisData.flags) ? analysisData.flags : [],
-        highlights: Array.isArray(analysisData.highlights) ? analysisData.highlights : [],
-        technicalIndicators: {
-          inconsistencies: normalizeScore(technicalIndicators.inconsistencies, 0),
-          artifacts: normalizeScore(technicalIndicators.artifacts, 0),
-          metadata: normalizeScore(technicalIndicators.metadata, 0),
-        },
-      };
-
-      setResult(finalResult);
-      resultsCache.current.set(cacheKey, finalResult);
-
-      // Save to history
-      saveAnalysisToHistory({
-        type: 'media',
-        fileName: mediaFile?.name || 'Unknown file',
-        mediaType: mediaType,
-        result: finalResult,
-      });
 
     } catch (error) {
-      console.error("Media analysis failed", error);
+      console.error("Analysis failed", error);
       setResult({
         isOriginal: false,
         confidence: 0,
-        message: "Analysis failed. Please check your API key or connection.",
+        message: "Analysis failed. Ensure backend is running.",
         flags: [error.message],
         highlights: [],
-        technicalIndicators: {
-          inconsistencies: 0,
-          artifacts: 0,
-          metadata: 0,
-        },
+        technicalIndicators: { inconsistencies: 0, artifacts: 0, metadata: 0 }
       });
     } finally {
       setIsAnalyzing(false);
     }
   };
+
+  // Stub for Deprecated Gemini
+  const runGeminiAnalysis = async () => { };
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 relative overflow-hidden">

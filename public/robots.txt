@@ -1,0 +1,11 @@
+# DeFraudAI Robots.txt
+# https://defraudai.com
+
+# Allow all search engines to crawl public pages
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /api/
+
+# Sitemap location
+Sitemap: https://defraudai.com/sitemap.xml

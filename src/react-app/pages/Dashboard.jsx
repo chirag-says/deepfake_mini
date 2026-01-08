@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
     BarChart3,
     Calendar,
@@ -12,42 +12,104 @@ import {
     XCircle,
     AlertTriangle,
     TrendingUp,
+    RefreshCw,
 } from "lucide-react";
 import SiteHeader from "../components/layout/SiteHeader";
 import ParticleBackground from "../components/common/ParticleBackground";
 import FloatingCard from "../components/common/FloatingCard";
 import Button from "../components/common/Button";
+import { useAuth } from "../shared/context/AuthContext";
 import {
-    getAnalysisHistory,
-    getAnalysisStats,
-    clearAnalysisHistory,
-    deleteAnalysisById,
+    getAnalysisHistory as getLocalHistory,
+    getAnalysisStats as getLocalStats,
+    clearAnalysisHistory as clearLocalHistory,
+    deleteAnalysisById as deleteLocalById,
 } from "../shared/utils/historyStorage";
 
 export default function Dashboard() {
+    const { authFetch, isLoggedIn } = useAuth();
     const [history, setHistory] = useState([]);
     const [stats, setStats] = useState(null);
     const [filter, setFilter] = useState("all"); // 'all' | 'media' | 'text'
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    const refreshData = useCallback(async () => {
+        setIsLoading(true);
+        setError(null);
+
+        try {
+            if (isLoggedIn) {
+                // Fetch from backend API (primary source for logged-in users)
+                const [historyRes, statsRes] = await Promise.all([
+                    authFetch("/api/user/history"),
+                    authFetch("/api/user/stats")
+                ]);
+
+                if (historyRes.ok && statsRes.ok) {
+                    const historyData = await historyRes.json();
+                    const statsData = await statsRes.json();
+                    setHistory(historyData);
+                    setStats(statsData);
+                } else {
+                    throw new Error("Failed to fetch from server");
+                }
+            } else {
+                // Use localStorage for anonymous users
+                setHistory(getLocalHistory());
+                setStats(getLocalStats());
+            }
+        } catch (err) {
+            console.error("Failed to load dashboard data:", err);
+            setError(err.message);
+            // Fallback to localStorage
+            setHistory(getLocalHistory());
+            setStats(getLocalStats());
+        } finally {
+            setIsLoading(false);
+        }
+    }, [authFetch, isLoggedIn]);
 
     useEffect(() => {
         refreshData();
-    }, []);
+    }, [refreshData]);
 
-    const refreshData = () => {
-        setHistory(getAnalysisHistory());
-        setStats(getAnalysisStats());
-    };
+    const handleClearAll = async () => {
+        if (!window.confirm("Are you sure you want to clear all analysis history?")) {
+            return;
+        }
 
-    const handleClearAll = () => {
-        if (window.confirm("Are you sure you want to clear all analysis history?")) {
-            clearAnalysisHistory();
+        try {
+            if (isLoggedIn) {
+                const response = await authFetch("/api/user/history/clear", {
+                    method: "DELETE"
+                });
+                if (!response.ok) throw new Error("Failed to clear history");
+            }
+            // Also clear local storage
+            clearLocalHistory();
             refreshData();
+        } catch (err) {
+            console.error("Failed to clear history:", err);
+            setError("Failed to clear history");
         }
     };
 
-    const handleDelete = (id) => {
-        deleteAnalysisById(id);
-        refreshData();
+    const handleDelete = async (id) => {
+        try {
+            if (isLoggedIn) {
+                const response = await authFetch(`/api/user/history/${id}`, {
+                    method: "DELETE"
+                });
+                if (!response.ok) throw new Error("Failed to delete");
+            }
+            // Also delete from local storage
+            deleteLocalById(id);
+            refreshData();
+        } catch (err) {
+            console.error("Failed to delete analysis:", err);
+            setError("Failed to delete analysis");
+        }
     };
 
     const filteredHistory = history.filter((item) => {
@@ -184,8 +246,8 @@ export default function Dashboard() {
                                             key={f}
                                             onClick={() => setFilter(f)}
                                             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${filter === f
-                                                    ? "bg-blue-500 text-white"
-                                                    : "bg-slate-800/60 text-slate-300 hover:bg-slate-700/60"
+                                                ? "bg-blue-500 text-white"
+                                                : "bg-slate-800/60 text-slate-300 hover:bg-slate-700/60"
                                                 }`}
                                         >
                                             {f === "all" && "All"}
@@ -236,8 +298,8 @@ export default function Dashboard() {
                                         <div className="flex items-center gap-4">
                                             <div
                                                 className={`w-10 h-10 rounded-xl flex items-center justify-center ${item.type === "media"
-                                                        ? "bg-purple-500/10"
-                                                        : "bg-blue-500/10"
+                                                    ? "bg-purple-500/10"
+                                                    : "bg-blue-500/10"
                                                     }`}
                                             >
                                                 {item.type === "media" ? (

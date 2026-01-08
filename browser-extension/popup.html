@@ -36,6 +36,7 @@
       font-weight: 700;
       background: linear-gradient(90deg, #60a5fa, #a78bfa);
       -webkit-background-clip: text;
+      background-clip: text;
       -webkit-text-fill-color: transparent;
     }
 
@@ -193,6 +194,21 @@
   <a href="http://localhost:5173/dashboard" target="_blank" class="cta-btn">
     📊 Open Dashboard
   </a>
+
+  <div class="status-card" style="margin-top: 16px;">
+    <div style="font-size: 12px; color: #94a3b8; margin-bottom: 8px;">
+      <strong style="color: #a5b4fc;">⚙️ API Settings</strong>
+    </div>
+    <input type="text" id="apiUrl" placeholder="Backend URL"
+      style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.3); color: #fff; font-size: 11px; margin-bottom: 8px;" />
+    <div style="display: flex; gap: 8px; align-items: center;">
+      <button id="saveApiBtn"
+        style="padding: 6px 12px; border-radius: 6px; border: none; background: #3b82f6; color: #fff; font-size: 11px; cursor: pointer;">
+        Save
+      </button>
+      <span id="apiStatus" style="font-size: 11px; color: #64748b;"></span>
+    </div>
+  </div>
 
   <div class="footer">
     Ensemble: HuggingFace ViT + Gemini Vision API

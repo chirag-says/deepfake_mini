@@ -101,7 +101,7 @@ In Railway, go to **Variables** tab and add:
 
 | Variable | Value |
 |----------|-------|
-| `JWT_SECRET_KEY` | `8cae730d7bb6f35c05e0b6c779936c5ef630c5e7809b51c6585297421181903d` |
+| `JWT_SECRET_KEY` | Generate with: `openssl rand -hex 32` (NEVER commit this!) |
 | `VITE_GEMINI_API_KEY` | Your Gemini API key |
 | `MONGODB_URI` | Your MongoDB Atlas connection string |
 | `MONGODB_DB_NAME` | `defraudai` |
