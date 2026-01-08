@@ -1036,48 +1036,68 @@ async def analyze_ensemble(
 
 
 
+
+
+
+
+
 # ============================================
-# Frontend Static Files (Unified Deployment)
+# SPA Deployment Logic (Unified)
 # ============================================
 
-# Path to frontend build (from src/backend/main.py -> ../../dist)
-frontend_dist = Path(__file__).resolve().parent.parent.parent / "dist"
-
-if frontend_dist.exists():
-    print(f"Serving frontend from: {frontend_dist}")
+def attach_spa(target_app: FastAPI):
+    """
+    Attaches the React Frontend (SPA) to the FastAPI backend.
+    MUST be called LAST to ensure API routes take precedence.
+    """
+    # Path to dist: src/backend/main.py -> ../../dist
+    frontend_dist = Path(__file__).resolve().parent.parent.parent / "dist"
     
-    # Mount assets directory (e.g. /assets/index.js)
-    if (frontend_dist / "assets").exists():
-        app.mount("/assets", StaticFiles(directory=str(frontend_dist / "assets")), name="assets")
-        
-    # Serve favicon, robots.txt, sitemap.xml, and PWA files directly if they exist
-    for static_file in ["robots.txt", "sitemap.xml", "favicon.ico", "logo.png", "sw.js", "manifest.json", "service-worker.js"]:
-        file_path = frontend_dist / static_file
+    if not frontend_dist.exists():
+        print(f"SPA WARNING: Dist folder not found at {frontend_dist}. Running in API-Only mode.")
+        return
+
+    print(f"SPA: Attaching frontend from {frontend_dist}")
+
+    # 1. Mount /assets folder
+    assets_dir = frontend_dist / "assets"
+    if assets_dir.exists():
+        target_app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
+
+    # 2. Serve Root Files (favicon, robots, etc.)
+    static_files = ["robots.txt", "sitemap.xml", "favicon.ico", "logo.png", "sw.js", "manifest.json"]
+    for file_name in static_files:
+        file_path = frontend_dist / file_name
         if file_path.exists():
-            # Use a closure to capture the specific file path
-            @app.get(f"/{static_file}")
-            async def serve_static_root(f_path=file_path): 
+            # Define specific route for each file
+            @target_app.get(f"/{file_name}", include_in_schema=False)
+            async def serve_file(f_path=file_path): 
                 from fastapi.responses import FileResponse
                 return FileResponse(f_path)
 
-    # Root route -> index.html
-    @app.get("/")
-    async def serve_spa_root():
+    # 3. Serve Index (Root)
+    @target_app.get("/", include_in_schema=False)
+    async def serve_root():
         return HTMLResponse((frontend_dist / "index.html").read_text(encoding="utf-8"))
 
-    # Catch-all for React Router (must be last)
-    @app.get("/{full_path:path}")
-    async def serve_spa_catch_all(full_path: str):
-        print(f"SPA_CATCH_ALL matched: '{full_path}'")
-        # Passthrough for API routes that weren't matched (returns 404 JSON instead of HTML)
-        if full_path.startswith("api/") or full_path.startswith("docs") or full_path.startswith("openapi.json"):
-             raise HTTPException(status_code=404, detail="Not Found")
+    # 4. Catch-All for SPA Routing (Strictly Last)
+    @target_app.get("/{full_path:path}", include_in_schema=False)
+    async def catch_all(full_path: str):
+        # If this captures an API path, return 404 JSON (not HTML)
+        if full_path.startswith("api/") or full_path.startswith("docs"):
+             # DEBUG: Print why we caught an API route
+             print(f"SPA_CATCH_ALL caught API request: {full_path}")
+             return Response(
+                 status_code=404, 
+                 content='{"detail": "API Endpoint Not Found"}', 
+                 media_type="application/json"
+             )
         
-        # Serve index.html for any other route to let React handle routing
+        # Otherwise serve index.html for client-side routing
         return HTMLResponse((frontend_dist / "index.html").read_text(encoding="utf-8"))
-else:
-    print(f"Warning: Frontend build not found at {frontend_dist}. Running in API-only mode.")
 
+# Execute Attachment
+attach_spa(app)
 
 
 # Debug: Log all registered routes to verify API endpoints exist
