@@ -109,8 +109,8 @@ export default function SiteHeader() {
 
                   {/* User Profile & Logout */}
                   <div className="flex items-center gap-3 pl-4 border-l border-slate-800">
-                    <div className="flex items-center gap-2 pr-2">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shadow-inner">
+                    <Link to="/profile" className="flex items-center gap-2 pr-2 group hover:opacity-80 transition-opacity">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shadow-inner ring-2 ring-transparent group-hover:ring-blue-500/50 transition-all">
                         {user?.name?.charAt(0) || "U"}
                       </div>
                       <div className="flex flex-col">
@@ -118,10 +118,10 @@ export default function SiteHeader() {
                           {user?.name?.split(" ")[0]}
                         </span>
                         <span className="text-[10px] text-slate-500 leading-none mt-0.5">
-                          Basic Plan
+                          View Profile
                         </span>
                       </div>
-                    </div>
+                    </Link>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -192,15 +192,15 @@ export default function SiteHeader() {
           <div className="flex flex-col h-full pt-28 px-6 pb-10">
             {isLoggedIn ? (
               <>
-                <div className="flex items-center gap-3 mb-8 p-4 rounded-2xl bg-slate-900/50 border border-slate-800">
+                <Link to="/profile" className="flex items-center gap-3 mb-8 p-4 rounded-2xl bg-slate-900/50 border border-slate-800 active:bg-slate-800 transition-colors" onClick={closeMobileNav}>
                   <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-inner">
                     {user?.name?.charAt(0) || "U"}
                   </div>
                   <div>
                     <h3 className="text-white font-medium">{user?.name || user?.email}</h3>
-                    <p className="text-xs text-slate-500">Workspace Owner</p>
+                    <p className="text-xs text-blue-400">View Profile</p>
                   </div>
-                </div>
+                </Link>
 
                 <nav className="flex-1 space-y-2 overflow-y-auto">
                   {signedInNav.map((item) => (

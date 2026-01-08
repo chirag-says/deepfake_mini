@@ -11,6 +11,7 @@ import MissionPage from "./pages/Mission";
 import WhyChooseUsPage from "./pages/WhyChooseUs";
 import ExclusivesPage from "./pages/Exclusives";
 import Dashboard from "./pages/Dashboard";
+import Profile from "./pages/Profile";
 import ProtectedRoute from "./shared/components/ProtectedRoute";
 
 export default function App() {
@@ -72,6 +73,14 @@ export default function App() {
           )}
         />
         <Route path="/team" element={<TeamDetails />} />
+        <Route
+          path="/profile"
+          element={(
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          )}
+        />
       </Routes>
     </Router>
   );
