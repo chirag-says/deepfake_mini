@@ -1,28 +1,26 @@
 # ==========================================
 # Unified Full-Stack Deployment Config
-# Railway: Use Python as primary runtime
 # ==========================================
 
 # Force Python provider
 providers = ["python"]
 
 [phases.setup]
-# Install Python 3.11 with pip package manager and Node.js
-nixPkgs = ["python311", "python311Packages.pip", "nodejs_20", "gcc"]
+# Install Python and Node.js
+nixPkgs = ["python311", "nodejs_20", "gcc"]
 
 [phases.install]
-# Install Python deps using python -m pip (guaranteed to work)
-# Install Node deps with npm
+# Bootstrap pip first, then install dependencies
 cmds = [
-    "python3.11 -m pip install -r src/backend/requirements.txt --user",
+    "python3.11 -m ensurepip --upgrade",
+    "python3.11 -m pip install -r src/backend/requirements.txt",
     "npm install"
 ]
 
 [phases.build]
-# Build the React frontend
 cmds = ["npm run build"]
 
 [start]
-# Start FastAPI server
 cmd = "cd src/backend && python3.11 -m uvicorn main:app --host 0.0.0.0 --port $PORT"
+
 
