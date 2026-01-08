@@ -7,14 +7,15 @@
 providers = ["python"]
 
 [phases.setup]
-# Install Python 3.11 and Node.js 20 for build
-nixPkgs = ["python311", "nodejs_20", "gcc"]
+# Install Python 3.11 with pip and Node.js 20 for build
+# python311Full includes pip, unlike python311
+nixPkgs = ["python311Full", "nodejs_20", "gcc"]
 
 [phases.install]
 # Install dependencies for both parts
+# Note: Don't upgrade pip - Nix manages the Python environment
 cmds = [
-    "python3 -m pip install --upgrade pip",
-    "python3 -m pip install -r src/backend/requirements.txt",
+    "pip install -r src/backend/requirements.txt",
     "npm install"
 ]
 
@@ -25,5 +26,5 @@ cmds = ["npm run build"]
 [start]
 # Start FastAPI (which now serves the built frontend)
 # CRITICAL: This is the runtime command
-cmd = "cd src/backend && python3 -m uvicorn main:app --host 0.0.0.0 --port $PORT"
+cmd = "cd src/backend && python -m uvicorn main:app --host 0.0.0.0 --port $PORT"
 
