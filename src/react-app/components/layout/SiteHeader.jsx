@@ -43,7 +43,7 @@ export default function SiteHeader() {
               <div className="relative">
                 <div className="absolute inset-0 bg-blue-500/20 rounded-full blur-xl transition-opacity duration-300 group-hover:opacity-70" />
                 <img
-                  src="/DeFraudAI_Logo.png"
+                  src="/logo-v2.png"
                   alt="DeFraudAI Logo"
                   className="relative w-16 h-16 object-contain rounded-full border-2 border-blue-500/50 shadow-xl"
                 />
