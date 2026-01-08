@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { Link, NavLink, useNavigate } from "react-router-dom";
-import { Menu, X, LogOut, User } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Link, NavLink, useNavigate, useLocation } from "react-router-dom";
+import { Menu, X, LogOut, User, ChevronRight } from "lucide-react";
 import { useAuth } from "../../shared/context/AuthContext";
 import Button from "../common/Button";
 
@@ -10,20 +10,30 @@ const signedInNav = [
   { label: "Verify Content", to: "/analysis" },
   { label: "Media Authenticity", to: "/media-authenticity" },
   { label: "Source Intelligence", to: "/source-intelligence" },
-  { label: "About", to: "/team" },
 ];
 
 const signedOutNav = [
   { label: "Mission", to: "/mission" },
   { label: "Why Choose Us", to: "/why-choose-us" },
   { label: "Exclusives", to: "/exclusives" },
-  { label: "Team", to: "/team" },
+  { label: "About", to: "/team" },
 ];
 
 export default function SiteHeader() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const { isLoggedIn, user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Handle scroll effect for header
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const toggleMobileNav = () => setMobileNavOpen((prev) => !prev);
   const closeMobileNav = () => setMobileNavOpen(false);
@@ -36,67 +46,102 @@ export default function SiteHeader() {
 
   return (
     <>
-      <header className="bg-slate-900/80 backdrop-blur-2xl border-b border-slate-700/50 fixed top-0 left-0 right-0 z-40 shadow-2xl">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <header
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b ${scrolled
+          ? "bg-slate-950/80 backdrop-blur-md border-slate-800/60 shadow-xl py-3"
+          : "bg-transparent border-transparent py-5"
+          }`}
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
-            <Link to="/" className="flex items-center space-x-4 group">
-              <div className="relative">
-                <div className="absolute inset-0 bg-blue-500/20 rounded-full blur-xl transition-opacity duration-300 group-hover:opacity-70" />
+            {/* Logo Section */}
+            <Link to="/" className="flex items-center gap-3 group">
+              <div className="relative flex-shrink-0">
+                <div className="absolute inset-0 bg-blue-500/20 rounded-full blur-lg transition-opacity duration-300 group-hover:opacity-100 opacity-50" />
                 <img
                   src="/logo-v2.png"
                   alt="DeFraudAI Logo"
-                  className="relative w-12 h-12 object-contain rounded-full bg-white/10 p-1 border-2 border-emerald-500/50 shadow-lg backdrop-blur-sm"
+                  className="relative w-10 h-10 object-cover rounded-full shadow-md"
                 />
               </div>
-              <div>
-                <h1 className="text-2xl font-bold text-white">DeFraudAI</h1>
-                <p className="text-sm text-slate-400">
-                  AI-Powered Truth Verification
-                </p>
+              <div className="flex flex-col">
+                <span className="text-xl font-bold text-white tracking-tight leading-none group-hover:text-blue-400 transition-colors">
+                  DeFraudAI
+                </span>
+                <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider leading-none mt-1">
+                  Truth Verification
+                </span>
               </div>
             </Link>
 
-            <div className="hidden md:flex items-center space-x-6">
+            {/* Desktop Navigation */}
+            <div className="hidden lg:flex items-center gap-1">
               {isLoggedIn ? (
                 <>
-                  <nav className="flex space-x-2">
+                  <nav className="flex items-center gap-1 bg-slate-900/50 p-1 rounded-full border border-slate-800/50 backdrop-blur-sm mr-4">
                     {signedInNav.map((item) => (
                       <NavLink
                         key={item.to}
                         to={item.to}
-                        onClick={closeMobileNav}
                         className={({ isActive }) =>
-                          `text-slate-300 hover:text-white px-3 py-2 rounded-xl transition-colors ${isActive ? "bg-blue-500/20 text-white" : ""
+                          `text-sm font-medium px-4 py-1.5 rounded-full transition-all duration-200 ${isActive
+                            ? "bg-blue-600 text-white shadow-lg shadow-blue-900/20"
+                            : "text-slate-400 hover:text-white hover:bg-slate-800"
                           }`
                         }
                       >
                         {item.label}
                       </NavLink>
                     ))}
+                    {/* Separate About link for logged in users */}
+                    <NavLink
+                      to="/team"
+                      className={({ isActive }) =>
+                        `text-sm font-medium px-4 py-1.5 rounded-full transition-all duration-200 ${isActive
+                          ? "bg-blue-600 text-white shadow-lg shadow-blue-900/20"
+                          : "text-slate-400 hover:text-white hover:bg-slate-800"
+                        }`
+                      }
+                    >
+                      About
+                    </NavLink>
                   </nav>
 
-                  {/* User Menu */}
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800/50 border border-slate-700/50">
-                      <User className="w-4 h-4 text-blue-400" />
-                      <span className="text-sm text-slate-300">{user?.name || user?.email}</span>
+                  {/* User Profile & Logout */}
+                  <div className="flex items-center gap-3 pl-4 border-l border-slate-800">
+                    <div className="flex items-center gap-2 pr-2">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shadow-inner">
+                        {user?.name?.charAt(0) || "U"}
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-xs font-medium text-white leading-none">
+                          {user?.name?.split(" ")[0]}
+                        </span>
+                        <span className="text-[10px] text-slate-500 leading-none mt-0.5">
+                          Basic Plan
+                        </span>
+                      </div>
                     </div>
-                    <Button variant="ghost" size="sm" onClick={handleLogout}>
-                      <LogOut className="w-4 h-4 mr-2" />
-                      Logout
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleLogout}
+                      className="text-slate-400 hover:text-red-400 hover:bg-red-500/10 h-8 w-8 p-0 rounded-full"
+                      title="Logout"
+                    >
+                      <LogOut className="w-4 h-4" />
                     </Button>
                   </div>
                 </>
               ) : (
                 <>
-                  <nav className="flex space-x-2">
+                  <nav className="flex items-center gap-6 mr-8">
                     {signedOutNav.map((item) => (
                       <NavLink
                         key={item.to}
                         to={item.to}
-                        onClick={closeMobileNav}
                         className={({ isActive }) =>
-                          `text-slate-300 hover:text-white px-3 py-2 rounded-xl transition-colors ${isActive ? "bg-blue-500/20 text-white" : ""
+                          `text-sm font-medium transition-colors ${isActive ? "text-blue-400" : "text-slate-300 hover:text-white"
                           }`
                         }
                       >
@@ -104,24 +149,28 @@ export default function SiteHeader() {
                       </NavLink>
                     ))}
                   </nav>
-                  <div className="flex items-center gap-3">
+
+                  <div className="flex items-center gap-3 pl-4 border-l border-slate-700/50">
                     <Link to="/login">
-                      <Button variant="outline" size="sm">
-                        Sign in
+                      <Button variant="ghost" size="sm" className="text-slate-300 hover:text-white">
+                        Log in
                       </Button>
                     </Link>
                     <Link to="/register">
-                      <Button size="sm">Get started</Button>
+                      <Button size="sm" className="bg-blue-600 hover:bg-blue-500 text-white border-0 shadow-lg shadow-blue-900/20">
+                        Get Scanned <ChevronRight className="w-4 h-4 ml-1" />
+                      </Button>
                     </Link>
                   </div>
                 </>
               )}
             </div>
 
+            {/* Mobile Menu Button */}
             <Button
               variant="ghost"
               size="sm"
-              className="md:hidden"
+              className="lg:hidden text-slate-300 hover:text-white"
               onClick={toggleMobileNav}
             >
               {mobileNavOpen ? (
@@ -134,54 +183,72 @@ export default function SiteHeader() {
         </div>
       </header>
 
-      <div className="h-24" />
+      {/* Spacer to prevent content jump */}
+      <div className="h-20" />
 
+      {/* Mobile Navigation Overlay */}
       {mobileNavOpen && (
-        <div className="md:hidden fixed inset-0 z-30 bg-slate-900/95 backdrop-blur-xl">
-          <div className="max-w-7xl mx-auto px-6 py-8 space-y-6 pt-24">
+        <div className="fixed inset-0 z-40 bg-slate-950/95 backdrop-blur-xl lg:hidden animation-fade-in">
+          <div className="flex flex-col h-full pt-28 px-6 pb-10">
             {isLoggedIn ? (
               <>
-                <nav className="space-y-3">
+                <div className="flex items-center gap-3 mb-8 p-4 rounded-2xl bg-slate-900/50 border border-slate-800">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-inner">
+                    {user?.name?.charAt(0) || "U"}
+                  </div>
+                  <div>
+                    <h3 className="text-white font-medium">{user?.name || user?.email}</h3>
+                    <p className="text-xs text-slate-500">Workspace Owner</p>
+                  </div>
+                </div>
+
+                <nav className="flex-1 space-y-2 overflow-y-auto">
                   {signedInNav.map((item) => (
                     <NavLink
                       key={item.to}
                       to={item.to}
                       onClick={closeMobileNav}
                       className={({ isActive }) =>
-                        `block text-lg font-medium px-4 py-3 rounded-xl transition-colors ${isActive
-                          ? "bg-blue-500/20 text-white"
-                          : "text-slate-300 hover:text-white"
+                        `flex items-center text-base font-medium px-4 py-3.5 rounded-xl transition-all ${isActive
+                          ? "bg-blue-600/10 text-blue-400 border border-blue-600/20"
+                          : "text-slate-400 hover:text-white hover:bg-slate-900"
                         }`
                       }
                     >
                       {item.label}
                     </NavLink>
                   ))}
+                  <NavLink
+                    to="/team"
+                    onClick={closeMobileNav}
+                    className={({ isActive }) =>
+                      `flex items-center text-base font-medium px-4 py-3.5 rounded-xl transition-all ${isActive
+                        ? "bg-blue-600/10 text-blue-400 border border-blue-600/20"
+                        : "text-slate-400 hover:text-white hover:bg-slate-900"
+                      }`
+                    }
+                  >
+                    About
+                  </NavLink>
                 </nav>
 
-                <div className="pt-4 space-y-4">
-                  <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-slate-800/50 border border-slate-700/50">
-                    <User className="w-5 h-5 text-blue-400" />
-                    <span className="text-slate-300">{user?.name || user?.email}</span>
-                  </div>
-                  <Button variant="outline" className="w-full" onClick={handleLogout}>
+                <div className="pt-6 border-t border-slate-800">
+                  <Button variant="outline" className="w-full justify-center border-slate-700 hover:bg-slate-800" onClick={handleLogout}>
                     <LogOut className="w-4 h-4 mr-2" />
-                    Logout
+                    Sign Out
                   </Button>
                 </div>
               </>
             ) : (
               <>
-                <nav className="space-y-3">
+                <nav className="flex-1 space-y-4">
                   {signedOutNav.map((item) => (
                     <NavLink
                       key={item.to}
                       to={item.to}
                       onClick={closeMobileNav}
                       className={({ isActive }) =>
-                        `block text-lg font-medium px-4 py-3 rounded-xl transition-colors ${isActive
-                          ? "bg-blue-500/20 text-white"
-                          : "text-slate-300 hover:text-white"
+                        `block text-2xl font-bold ${isActive ? "text-blue-400" : "text-white"
                         }`
                       }
                     >
@@ -190,14 +257,16 @@ export default function SiteHeader() {
                   ))}
                 </nav>
 
-                <div className="grid grid-cols-1 gap-3 pt-6">
+                <div className="grid grid-cols-1 gap-4 pt-8">
                   <Link to="/login" onClick={closeMobileNav}>
-                    <Button variant="outline" className="w-full">
-                      Sign in
+                    <Button variant="outline" className="w-full justify-center py-6 text-lg border-slate-700">
+                      Sign In
                     </Button>
                   </Link>
                   <Link to="/register" onClick={closeMobileNav}>
-                    <Button className="w-full">Create account</Button>
+                    <Button className="w-full justify-center py-6 text-lg bg-blue-600 hover:bg-blue-500">
+                      Get Started
+                    </Button>
                   </Link>
                 </div>
               </>
