@@ -23,7 +23,13 @@ load_dotenv(dotenv_path=env_path)
 # ============================================
 MONGODB_URI = os.getenv("MONGODB_URI", "")
 MONGODB_DB_NAME = os.getenv("MONGODB_DB_NAME", "defraudai")
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-super-secret-key-change-in-production-123!")
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError(
+        "CRITICAL: JWT_SECRET_KEY environment variable is not set. "
+        "The application cannot start without a secure secret key. "
+        "Please set JWT_SECRET_KEY in your .env file or environment."
+    )
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
 

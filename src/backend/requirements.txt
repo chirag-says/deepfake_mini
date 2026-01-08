@@ -1,10 +1,27 @@
+# Core FastAPI
 fastapi
-uvicorn
+uvicorn[standard]
 python-multipart
+
+# ML/AI
 torch
 torchvision
 pillow
 numpy
 transformers
+
+# HTTP & Utils
 requests
 python-dotenv
+
+# Database (MongoDB)
+motor
+pymongo
+
+# Security & Authentication
+python-jose[cryptography]
+bcrypt
+pydantic[email]
+
+# Rate Limiting
+slowapi

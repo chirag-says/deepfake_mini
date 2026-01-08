@@ -1,0 +1,41 @@
+# Vercel Ignore File
+# These files/folders will not be uploaded to Vercel
+
+# Backend (deployed separately)
+src/backend/
+
+# Development files
+node_modules/
+.git/
+.env
+.env.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test files
+*.test.js
+*.test.ts
+*.spec.js
+*.spec.ts
+__tests__/
+coverage/
+
+# Documentation (optional - remove if you want docs deployed)
+# *.md
+
+# Large assets that shouldn't be in the bundle
+*.psd
+*.ai
+*.sketch

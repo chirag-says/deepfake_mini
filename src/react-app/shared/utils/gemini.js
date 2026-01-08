@@ -1,45 +1,39 @@
-const DEFAULT_API_ROOTS = [
-  import.meta.env.VITE_GEMINI_API_ROOT?.replace(/\/$/, ""),
-  "https://generativelanguage.googleapis.com/v1beta",
-].filter(Boolean);
+/**
+ * Gemini API Utility - Secure Proxy Version
+ * 
+ * This module routes all Gemini API calls through the backend proxy
+ * to keep the API key secure on the server side.
+ * 
+ * SECURITY: The VITE_GEMINI_API_KEY is NO LONGER used client-side.
+ * All requests go through /api/gemini-proxy on our backend.
+ */
 
-function normalizeModelName(model) {
-  return model?.trim() || undefined;
+// Backend API base URL
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+
+// Get auth token from storage (matches AuthContext storage)
+function getAuthToken() {
+  return sessionStorage.getItem("defraudai_token");
 }
 
-function addModelVariant(set, modelName) {
-  const normalized = normalizeModelName(modelName);
-  if (!normalized) return;
-  set.add(normalized);
-}
+/**
+ * Make a request to our backend Gemini proxy
+ */
+async function makeProxyRequest(endpoint, body) {
+  const token = getAuthToken();
 
-function buildModelFallbacks(requestedModel, additionalModels = []) {
-  const baseModel =
-    normalizeModelName(requestedModel) ||
-    normalizeModelName(import.meta.env.VITE_GEMINI_MODEL_NAME) ||
-    "gemini-2.5-flash";
+  const headers = {
+    "Content-Type": "application/json",
+  };
 
-  const fallbackSet = new Set();
+  // Include auth token if available (some endpoints allow anonymous)
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
 
-  addModelVariant(fallbackSet, baseModel);
-  // Use gemini-2.5-flash as the primary available model
-  addModelVariant(fallbackSet, "gemini-2.5-flash");
-  addModelVariant(fallbackSet, "gemini-2.5-flash-lite");
-
-  additionalModels.forEach((modelName) =>
-    addModelVariant(fallbackSet, modelName)
-  );
-
-  return Array.from(fallbackSet);
-}
-
-async function makeRequest({ endpoint, body, headers = {} }) {
-  const response = await fetch(endpoint, {
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...headers,
-    },
+    headers,
     body: JSON.stringify(body),
   });
 
@@ -47,98 +41,147 @@ async function makeRequest({ endpoint, body, headers = {} }) {
     return response.json();
   }
 
+  // Handle errors
   const errorText = await response.text().catch(() => "");
   let parsed;
   try {
     parsed = errorText ? JSON.parse(errorText) : undefined;
-  } catch (parseError) {
+  } catch {
     parsed = undefined;
   }
+
   const detailedMessage =
+    parsed?.detail ||
     parsed?.error?.message ||
     parsed?.message ||
     errorText ||
     `${response.status} ${response.statusText}`;
-  const enrichedMessage = `Gemini request failed (${response.status} ${response.statusText}): ${detailedMessage}`;
-  const error = new Error(enrichedMessage);
+
+  const error = new Error(`Gemini request failed: ${detailedMessage}`);
   error.status = response.status;
-  if (parsed?.error) {
-    error.code = parsed.error.status;
-    error.details = parsed.error;
-  }
+  error.details = parsed;
   throw error;
 }
 
+/**
+ * Call Gemini API through our secure backend proxy
+ * 
+ * @param {Object} options - Request options
+ * @param {Array} options.contents - The content parts to send
+ * @param {string} [options.model] - Model name (default: gemini-2.5-flash)
+ * @param {Object} [options.generationConfig] - Generation configuration
+ * @param {Array} [options.safetySettings] - Safety settings
+ * @param {Object} [options.systemInstruction] - System instruction
+ * @returns {Promise<Object>} - The Gemini API response
+ * 
+ * @example
+ * const response = await callGemini({
+ *   contents: [{ parts: [{ text: "Hello, how are you?" }] }],
+ *   model: "gemini-2.5-flash"
+ * });
+ */
 export async function callGemini({
   contents,
-  model,
-  fallbackModels = [],
+  model = "gemini-2.5-flash",
   generationConfig,
   safetySettings,
   systemInstruction,
+  // These parameters are ignored - API key is now server-side only
+  // eslint-disable-next-line no-unused-vars
+  apiKey,
+  // eslint-disable-next-line no-unused-vars
+  fallbackModels,
+  // eslint-disable-next-line no-unused-vars
   tools,
+  // eslint-disable-next-line no-unused-vars
   toolConfig,
-  apiKey = import.meta.env.VITE_GEMINI_API_KEY,
 } = {}) {
-  if (!apiKey) {
-    throw new Error(
-      "Gemini API key is missing. Please set VITE_GEMINI_API_KEY in your environment."
-    );
-  }
-
   if (!contents?.length) {
     throw new Error("Gemini request requires at least one content part.");
   }
 
-  const requestBody = { contents };
+  const requestBody = {
+    contents,
+    model,
+  };
+
   if (generationConfig) requestBody.generationConfig = generationConfig;
   if (safetySettings) requestBody.safetySettings = safetySettings;
   if (systemInstruction) requestBody.systemInstruction = systemInstruction;
-  if (tools) requestBody.tools = tools;
-  if (toolConfig) requestBody.toolConfig = toolConfig;
 
-  const modelsToTry = buildModelFallbacks(
-    model || import.meta.env.VITE_GEMINI_MODEL_NAME,
-    fallbackModels
-  );
-  let lastError;
-  const attempts = [];
+  return makeProxyRequest("/api/gemini-proxy", requestBody);
+}
 
-  for (const apiRoot of DEFAULT_API_ROOTS) {
-    for (const currentModel of modelsToTry) {
-      const endpoint = `${apiRoot}/models/${currentModel}:generateContent`;
-      try {
-        return await makeRequest({
-          endpoint,
-          body: requestBody,
-          headers: {
-            "X-goog-api-key": apiKey,
-          },
-        });
-      } catch (error) {
-        lastError = error;
-        attempts.push({
-          apiRoot,
-          model: currentModel,
-          status: error.status,
-          code: error.code,
-          message: error.message,
-        });
-        if (error.status !== 404 && error.status !== 429) {
-          error.attemptedModels = attempts;
-          throw error;
-        }
-        // Continue trying fallbacks if we hit a 404 (model not found) or 429 (rate limit)
-      }
-    }
+/**
+ * Analyze an image for deepfake detection using Gemini Vision
+ * Routes through our secure backend proxy
+ * 
+ * @param {Object} options - Analysis options
+ * @param {string} options.imageBase64 - Base64 encoded image data (without data URL prefix)
+ * @param {string} [options.mimeType] - MIME type of the image (default: image/jpeg)
+ * @param {string} [options.analysisType] - Type of analysis (default: deepfake)
+ * @returns {Promise<Object>} - Analysis result with is_fake, confidence, reasons
+ * 
+ * @example
+ * const result = await analyzeImageWithGemini({
+ *   imageBase64: "base64EncodedImageData...",
+ *   mimeType: "image/png"
+ * });
+ * console.log(result.is_fake, result.confidence);
+ */
+export async function analyzeImageWithGemini({
+  imageBase64,
+  mimeType = "image/jpeg",
+  analysisType = "deepfake",
+} = {}) {
+  if (!imageBase64) {
+    throw new Error("Image data is required for analysis.");
   }
 
-  if (lastError) {
-    lastError.attemptedModels = attempts;
-    throw lastError;
-  }
+  // Remove data URL prefix if present
+  const base64Data = imageBase64.includes(",")
+    ? imageBase64.split(",")[1]
+    : imageBase64;
 
-  const unknownError = new Error("Gemini request failed with unknown error.");
-  unknownError.attemptedModels = attempts;
-  throw unknownError;
+  return makeProxyRequest("/api/gemini-proxy/analyze-image", {
+    image_base64: base64Data,
+    mime_type: mimeType,
+    analysis_type: analysisType,
+  });
+}
+
+/**
+ * Helper to convert a File/Blob to base64
+ * 
+ * @param {File|Blob} file - The file to convert
+ * @returns {Promise<{base64: string, mimeType: string}>}
+ */
+export async function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result;
+      const base64 = dataUrl.split(",")[1];
+      resolve({
+        base64,
+        mimeType: file.type || "image/jpeg",
+      });
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
+ * Convenience function to analyze a File object
+ * 
+ * @param {File} file - Image file to analyze
+ * @returns {Promise<Object>} - Analysis result
+ */
+export async function analyzeImageFile(file) {
+  const { base64, mimeType } = await fileToBase64(file);
+  return analyzeImageWithGemini({
+    imageBase64: base64,
+    mimeType,
+  });
 }
