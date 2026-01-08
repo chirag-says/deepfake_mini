@@ -1,103 +1,50 @@
-# DeFraudAI Deployment Guide
+# DeFraudAI Unified Deployment Guide
 
-This guide walks you through deploying the **Backend to Railway** and the **Frontend to Vercel**.
+This guide details how to deploy your **Full-Stack Application (React + FastAPI)** as a **Single Service on Railway**.
+
+This unified approach eliminates CORS issues and simplifies management.
 
 ---
 
-## Part 1: Deploy Backend to Railway 🚂
-
-Railway is excellent for Python/FastAPI hosting.
+## Deployment Steps 🚀
 
 ### 1. Set up Railway Project
 1. Go to [Railway Dashboard](https://railway.app/).
 2. Click **New Project** → **Deploy from GitHub repo**.
 3. Select your repository: `deepfake_mini`.
-4. **IMPORTANT**: Do not deploy immediately! Click **Add Variables** or go to Settings first if possible. If it starts building, cancel it or let it fail (it might fail because it's in a subdirectory).
 
-### 2. Configure Service Settings
-1. Click on the card for your service (repo name).
-2. Go to the **Settings** tab.
-3. Scroll down to **Root Directory**.
-4. Change it from `/` to `/src/backend`.
-   - *This tells Railway to look for `requirements.txt` and `main.py` in the backend folder.*
-5. Save settings.
-
-### 3. Set Environment Variables
-Go to the **Variables** tab and add the following keys:
+### 2. Configure Variables (Crucial!)
+Go to the **Variables** tab for your new service and add the following:
 
 | Variable | Value | Description |
 |----------|-------|-------------|
 | `MONGODB_URI` | `mongodb+srv://...` | Connection string to your MongoDB Atlas |
 | `JWT_SECRET_KEY` | `your-secret-key` | A long random string for auth security |
-| `FRONTEND_URL` | `https://your-project.vercel.app` | **Add this LATER** after Vercel deploy, or put `*` temporarily. |
+| `VITE_API_BASE_URL` | *(Leave Empty)* | **IMPORTANT:** Create request for this variable but leave the value **blank/empty**. This ensures the frontend uses relative paths (same domain). |
 | `VITE_GEMINI_API_KEY` | `...` | (Optional) If you want to enable the cloud features |
 
-### 4. Deploy
-1. Railway should automatically detect the changes and rebuild (or click **Republish**).
-2. Watch the **Deployments** logs. It should install packages from `src/backend/requirements.txt`.
-3. Once valid, Railway will generate a public URL (e.g., `https://deepfake-backend-production.up.railway.app`).
-4. **Copy this URL**. You need it for the frontend.
+*Note: For `VITE_API_BASE_URL`, if Railway requires a value, try a single space ` ` or just `/`. Ideally empty string allows the app to fetch `/api/...` directly.*
 
----
-
-## Part 2: Deploy Frontend to Vercel ▲
-
-Vercel is optimized for Vite/React applications.
-
-### 1. Set up Vercel Project
-1. Go to [Vercel Dashboard](https://vercel.com/dashboard).
-2. Click **Add New** → **Project**.
-3. Import your `deepfake_mini` repository.
-
-### 2. Configure Build Settings
-Vercel should auto-detect "Vite".
-- **Framework Preset**: Vite
-- **Root Directory**: `./` (Default is fine)
-- **Build Command**: `vite build` (Default)
-- **Output Directory**: `dist` (Default)
-
-### 3. Set Environment Variables
-Expand the **Environment Variables** section and add:
-
-| Variable | Value | Description |
-|----------|-------|-------------|
-| `VITE_API_BASE_URL` | `https://your-backend.railway.app` | The backend URL from Part 1 |
-
-*Note: Do NOT add a trailing slash (e.g., use `.../app`, not `.../app/`).*
+### 3. Verify Build Config
+The project includes a `nixpacks.toml` file which automatically:
+1. Installs Python 3.11 & Node.js 20.
+2. Builds the React frontend (`npm run build`).
+3. Installs Python backend dependencies.
+4. Starts the FastAPI server (which serves the built React app).
 
 ### 4. Deploy
-1. Click **Deploy**.
-2. Vercel will build the React app.
-3. Once done, you will get a dashboard URL (e.g., `https://defraudai.vercel.app`).
-
----
-
-## Part 3: Verify & Connect 🔗
-
-### 1. Update Backend CORS
-1. Go back to **Railway**.
-2. Update the `FRONTEND_URL` variable to your actual Vercel URL (e.g., `https://defraudai.vercel.app`).
-3. Railway will restart the server.
-
-### 2. Test the App
-1. Open your Vercel URL.
-2. Go to **Media Authenticity** page.
-3. Upload an Image.
-4. It should show:
-   - "Deepfake & Media Forensics"
-   - "Local Model Analysis (Hugging Face ViT)"
-   - Result: "REAL" or "FAKE DETECTED"
-5. Open the Network tab (F12) to verify it calls `https://your-backend.railway.app/analyze-image`.
+1. Railway should deploy automatically.
+2. Once "Active", click the public URL.
+3. Your React frontend should load instantly!
+4. Upload an image -> Check Network tab -> It should hit `/analyze-image` (on the same domain).
 
 ---
 
 ## Troubleshooting
 
-- **Backend 503/500**: Check Railway logs. Ensure `Procfile` command `uvicorn main:app` is running successfully.
-- **Frontend "Network Error"**:
-  - Check `VITE_API_BASE_URL` in Vercel.
-  - Check CORS (`FRONTEND_URL`) in Railway.
-  - Ensure backend is strictly using https.
-- **"Module not found"**: Ensure `Root Directory` in Railway is `/src/backend`.
+- **"API_BASE_URL is localhost"**: This means `VITE_API_BASE_URL` wasn't set to empty string properly. In Railway, ensure the variable exists and is empty, or set it to `/`.
+- **"Module not found" / Build Fails**: Check `nixpacks.toml` logic. Ensure `package-lock.json` or `pnpm-lock.yaml` isn't conflicting.
+- **Frontend shows White Screen**: Open Console (F12). If script errors, check paths.
+- **Backend 404s**: Ensure `dist` folder was created. The build logs should say `npm run build` executed.
 
-**Enjoy your secure, private Deepfake Detection app!** 🛡️
+**Enjoy your unified DeFraudAI platform!** 🛡️

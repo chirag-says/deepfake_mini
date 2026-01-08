@@ -4,6 +4,8 @@ Implements secure authentication, rate limiting, input validation, and API proxy
 """
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Request, Response, status
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr, Field
@@ -16,6 +18,9 @@ from torchvision import models, transforms
 from PIL import Image, ImageChops, ImageEnhance, ExifTags
 import io
 import numpy as np
+import os
+from pathlib import Path
+from typing import List, Optional, Union
 import os
 import base64
 import requests
@@ -1028,6 +1033,49 @@ async def analyze_ensemble(
     except Exception as e:
         print(f"Ensemble analysis error: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to analyze image")
+
+
+
+# ============================================
+# Frontend Static Files (Unified Deployment)
+# ============================================
+
+# Path to frontend build (from src/backend/main.py -> ../../dist)
+frontend_dist = Path(__file__).resolve().parent.parent.parent / "dist"
+
+if frontend_dist.exists():
+    print(f"Serving frontend from: {frontend_dist}")
+    
+    # Mount assets directory (e.g. /assets/index.js)
+    if (frontend_dist / "assets").exists():
+        app.mount("/assets", StaticFiles(directory=str(frontend_dist / "assets")), name="assets")
+        
+    # Serve favicon, robots.txt, sitemap.xml directly if they exist
+    for static_file in ["robots.txt", "sitemap.xml", "favicon.ico", "logo.png"]:
+        file_path = frontend_dist / static_file
+        if file_path.exists():
+            # Use a closure to capture the specific file path
+            @app.get(f"/{static_file}")
+            async def serve_static_root(f_path=file_path): 
+                from fastapi.responses import FileResponse
+                return FileResponse(f_path)
+
+    # Root route -> index.html
+    @app.get("/")
+    async def serve_spa_root():
+        return HTMLResponse((frontend_dist / "index.html").read_text(encoding="utf-8"))
+
+    # Catch-all for React Router (must be last)
+    @app.get("/{full_path:path}")
+    async def serve_spa_catch_all(full_path: str):
+        # Passthrough for API routes that weren't matched (returns 404 JSON instead of HTML)
+        if full_path.startswith("api/") or full_path.startswith("docs") or full_path.startswith("openapi.json"):
+             raise HTTPException(status_code=404, detail="Not Found")
+        
+        # Serve index.html for any other route to let React handle routing
+        return HTMLResponse((frontend_dist / "index.html").read_text(encoding="utf-8"))
+else:
+    print(f"Warning: Frontend build not found at {frontend_dist}. Running in API-only mode.")
 
 
 if __name__ == "__main__":

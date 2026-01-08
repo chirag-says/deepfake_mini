@@ -1,11 +1,22 @@
-# Force only Python provider
-providers = ["python"]
+# ==========================================
+# Unified Full-Stack Deployment Config
+# ==========================================
 
 [phases.setup]
-nixPkgs = ["python311", "gcc"]
+# Install Python 3.11 and Node.js 20
+nixPkgs = ["python311", "nodejs_20", "gcc"]
 
 [phases.install]
-cmds = ["python3 -m pip install -r src/backend/requirements.txt"]
+# Install dependencies for both parts
+cmds = [
+    "python3 -m pip install -r src/backend/requirements.txt",
+    "npm install"
+]
+
+[phases.build]
+# Build the React frontend to static files ('dist' folder)
+cmds = ["npm run build"]
 
 [start]
+# Start FastAPI (which now serves the built frontend)
 cmd = "cd src/backend && python3 -m uvicorn main:app --host 0.0.0.0 --port $PORT"
