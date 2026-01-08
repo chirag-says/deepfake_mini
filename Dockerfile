@@ -8,9 +8,9 @@ FROM node:20-alpine AS frontend-builder
 
 WORKDIR /app
 
-# Copy package files and install deps
+# Copy package files and install deps (including devDeps for build)
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm ci
 
 # Copy source and build
 COPY . .
