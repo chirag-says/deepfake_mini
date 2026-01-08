@@ -4,7 +4,9 @@ import PropTypes from "prop-types";
 const AuthContext = createContext(null);
 
 // API base URL - use environment variable or default to localhost
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.PROD ? "" : "http://localhost:8000");
+// API base URL - ensure no trailing slash
+const rawBaseUrl = import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.PROD ? "" : "http://localhost:8000");
+const API_BASE_URL = rawBaseUrl.endsWith("/") ? rawBaseUrl.slice(0, -1) : rawBaseUrl;
 
 // User storage key (we only store user data now, not the token)
 // Token is stored in HttpOnly cookie by the backend

@@ -310,21 +310,7 @@
             console.error('Promise rejection:', e.reason);
         });
 
-        // Service Worker registration (if available)
-        const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
-        const isSecureContext = window.location.protocol === 'https:' || window.location.hostname === 'localhost';
 
-        if ('serviceWorker' in navigator && !isLocalhost && isSecureContext) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
-                    .then(registration => {
-                        console.log('SW registered: ', registration);
-                    })
-                    .catch(registrationError => {
-                        console.log('SW registration failed: ', registrationError);
-                    });
-            });
-        }
 
         // Creator badge interaction
         const creatorBadge = document.querySelector('.creator-badge');

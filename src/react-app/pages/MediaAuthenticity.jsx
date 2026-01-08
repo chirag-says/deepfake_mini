@@ -22,7 +22,8 @@ import { generateELA } from "../shared/utils/elaProcessing";
 import { saveAnalysisToHistory } from "../shared/utils/historyStorage";
 
 // API base URL from environment
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.PROD ? "" : "http://localhost:8000");
+const rawBaseUrl = import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.PROD ? "" : "http://localhost:8000");
+const API_BASE_URL = rawBaseUrl.endsWith("/") ? rawBaseUrl.slice(0, -1) : rawBaseUrl;
 
 const DEFAULT_RESULT = null;
 
