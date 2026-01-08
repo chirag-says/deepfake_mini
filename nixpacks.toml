@@ -1,3 +1,6 @@
+# Force only Python provider
+providers = ["python"]
+
 [phases.setup]
 nixPkgs = ["python311", "gcc"]
 
