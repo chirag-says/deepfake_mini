@@ -5,40 +5,25 @@ import Button from "../components/common/Button";
 import {
   Brain,
   Github,
-  GraduationCap,
+  Globe,
   Linkedin,
   Shield,
   Sparkles,
   Users,
+  Code,
+  Rocket,
 } from "lucide-react";
 
 const teamMembers = [
   {
     name: "Chirag",
-    role: "Deepfake Research Lead",
-    bio: "Specializes in generative model detection and adversarial robustness for visual misinformation.",
-    focus: "Computer Vision & ML Security",
+    role: "Founder & Lead Developer",
+    bio: "Full-stack engineer and AI enthusiast building cutting-edge solutions at OpScores. Specializes in deepfake detection, computer vision, and scalable web applications.",
+    focus: "AI/ML • Full Stack • Computer Vision",
     socials: {
-      linkedin: "https://linkedin.com",
-      github: "https://github.com",
-    },
-  },
-  {
-    name: "Hari Kishan K R",
-    role: "OSINT Intelligence Analyst",
-    bio: "Builds cross-platform signal aggregation pipelines to detect emerging misinformation campaigns.",
-    focus: "Narrative Intelligence & OSINT",
-    socials: {
-      linkedin: "https://linkedin.com",
-    },
-  },
-  {
-    name: "Abhishek Kumar",
-    role: "Applied ML Engineer",
-    bio: "Leads model deployment, evaluation, and safety guardrails for hybrid AI-human verification workflows.",
-    focus: "ML Systems & Safety",
-    socials: {
-      github: "https://github.com",
+      linkedin: "https://linkedin.com/in/chirag-says",
+      github: "https://github.com/chirag-says",
+      website: "https://opscores.in",
     },
   },
 ];
@@ -46,39 +31,42 @@ const teamMembers = [
 const values = [
   {
     icon: Shield,
-    title: "Safety-first",
+    title: "Safety-First AI",
     description:
-      "We champion responsible AI usage with human oversight and transparent guardrails.",
+      "We champion responsible AI usage with human oversight and transparent guardrails to combat misinformation.",
   },
   {
     icon: Brain,
-    title: "Research-grade",
+    title: "Research-Grade Tech",
     description:
-      "Our detectors combine academic-grade rigor with enterprise readiness.",
+      "Our detectors combine academic-grade rigor with enterprise readiness for real-world deployment.",
   },
   {
-    icon: Users,
-    title: "Collaborative",
+    icon: Code,
+    title: "Engineering Excellence",
     description:
-      "We partner with journalists, investigators, and civic organizations worldwide.",
+      "Every line of code is crafted for performance, security, and maintainability at scale.",
   },
 ];
 
-const advisors = [
+const companyHighlights = [
   {
-    name: "Jitin Raju",
-    expertise: "Neural Media Forensics",
-    affiliation: "Artia Institute Of Technology",
+    icon: Rocket,
+    title: "Built by OpScores",
+    description:
+      "DeFraudAI is developed and maintained by OpScores, a premium software engineering studio building the internet's future.",
   },
   {
-    name: "Mayank Kumar",
-    expertise: "Disinformation Response",
-    affiliation: "Atria Institute Of Technology",
+    icon: Globe,
+    title: "Global Impact",
+    description:
+      "Serving users worldwide with AI-powered tools to detect deepfakes, synthetic media, and misinformation.",
   },
   {
-    name: "Chirag",
-    expertise: "Responsible AI Governance",
-    affiliation: "Atria Institute Of Technology",
+    icon: Users,
+    title: "Open Collaboration",
+    description:
+      "We partner with journalists, researchers, and organizations committed to truth and transparency.",
   },
 ];
 
@@ -99,71 +87,88 @@ export default function TeamDetails() {
             <div className="text-center mb-16">
               <div className="inline-flex items-center px-4 py-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 text-sm mb-6">
                 <Sparkles className="w-4 h-4 mr-2" />
-                Humans behind DeFraudAI
+                A Product by OpScores
               </div>
               <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-                Meet the Verification Crew
+                About DeFraudAI
               </h1>
               <p className="text-lg text-slate-300 max-w-3xl mx-auto">
-                An interdisciplinary team of researchers, analysts, and
-                engineers uniting to combat synthetic misinformation at scale.
+                AI-powered deepfake detection and misinformation analysis platform,
+                built by OpScores to protect truth in the digital age.
               </p>
             </div>
 
-            <FloatingCard className="mb-12 grid grid-cols-1 md:grid-cols-3 gap-6">
-              {teamMembers.map((member) => (
-                <div
-                  key={member.name}
-                  className="bg-slate-900/60 border border-slate-700/40 rounded-3xl p-6 flex flex-col"
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h2 className="text-xl font-semibold text-white">
-                        {member.name}
-                      </h2>
-                      <p className="text-sm text-emerald-300/90">
-                        {member.role}
-                      </p>
-                    </div>
-                    <GraduationCap className="w-6 h-6 text-emerald-300/70" />
-                  </div>
-                  <p className="text-sm text-slate-300 leading-relaxed mb-4">
-                    {member.bio}
-                  </p>
-                  <div className="text-xs uppercase tracking-widest text-slate-500 mb-4">
-                    Focus
-                  </div>
-                  <p className="text-sm text-slate-200 mb-4">{member.focus}</p>
-                  <div className="mt-auto flex gap-3">
-                    {member.socials.linkedin && (
-                      <Button
-                        as="a"
-                        variant="outline"
-                        size="sm"
-                        className="flex-1"
-                        href={member.socials.linkedin}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <Linkedin className="w-4 h-4 mr-2" /> LinkedIn
-                      </Button>
-                    )}
-                    {member.socials.github && (
-                      <Button
-                        as="a"
-                        variant="outline"
-                        size="sm"
-                        className="flex-1"
-                        href={member.socials.github}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <Github className="w-4 h-4 mr-2" /> GitHub
-                      </Button>
-                    )}
+            {/* Founder Section */}
+            <FloatingCard className="mb-12">
+              <div className="flex flex-col md:flex-row gap-8 items-center">
+                <div className="flex-shrink-0">
+                  <div className="w-32 h-32 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center">
+                    <span className="text-4xl font-bold text-white">C</span>
                   </div>
                 </div>
-              ))}
+                <div className="flex-1 text-center md:text-left">
+                  <h2 className="text-2xl font-bold text-white mb-2">
+                    {teamMembers[0].name}
+                  </h2>
+                  <p className="text-emerald-300 mb-4">{teamMembers[0].role}</p>
+                  <p className="text-slate-300 mb-4">{teamMembers[0].bio}</p>
+                  <p className="text-sm text-slate-400 mb-6">{teamMembers[0].focus}</p>
+                  <div className="flex flex-wrap gap-3 justify-center md:justify-start">
+                    <Button
+                      as="a"
+                      variant="outline"
+                      size="sm"
+                      href={teamMembers[0].socials.linkedin}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Linkedin className="w-4 h-4 mr-2" /> LinkedIn
+                    </Button>
+                    <Button
+                      as="a"
+                      variant="outline"
+                      size="sm"
+                      href={teamMembers[0].socials.github}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Github className="w-4 h-4 mr-2" /> GitHub
+                    </Button>
+                    <Button
+                      as="a"
+                      size="sm"
+                      href={teamMembers[0].socials.website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Globe className="w-4 h-4 mr-2" /> OpScores
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </FloatingCard>
+
+            {/* Company Highlights */}
+            <FloatingCard className="mb-12">
+              <h2 className="text-2xl font-bold text-white mb-6 text-center">
+                Why DeFraudAI?
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {companyHighlights.map((highlight) => (
+                  <div
+                    key={highlight.title}
+                    className="bg-slate-900/60 border border-slate-700/40 rounded-3xl p-6"
+                  >
+                    <highlight.icon className="w-6 h-6 text-emerald-300 mb-4" />
+                    <h3 className="text-lg font-semibold text-white mb-2">
+                      {highlight.title}
+                    </h3>
+                    <p className="text-sm text-slate-400">
+                      {highlight.description}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </FloatingCard>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
@@ -174,28 +179,28 @@ export default function TeamDetails() {
                 <p className="text-slate-300 text-sm leading-relaxed">
                   We build practical AI-driven defenses against deepfakes and
                   synthetic propaganda. DeFraudAI combines advanced detection
-                  models with human-trusted workflows, empowering investigative
-                  teams to expose manipulation, confirm source integrity, and
-                  share ground-truth faster.
+                  models with intuitive interfaces, empowering everyone from
+                  journalists to everyday users to verify content authenticity
+                  and fight misinformation.
                 </p>
               </FloatingCard>
               <FloatingCard>
                 <h2 className="text-2xl font-bold text-white mb-6">
-                  How We Operate
+                  About OpScores
                 </h2>
                 <p className="text-slate-300 text-sm leading-relaxed">
-                  Our research squad deploys continuous model evaluations while
-                  the intelligence unit tracks disinformation campaigns across
-                  networks. Engineering weaves findings into resilient tooling,
-                  ensuring our partners can act on high-confidence signals with
-                  clear provenance.
+                  OpScores is a premium software engineering studio that builds
+                  the impossible. From full-stack applications to AI/ML systems,
+                  cloud infrastructure, and IoT solutions — we engineer products
+                  that shape tomorrow. DeFraudAI is one of our flagship projects
+                  in the AI safety space.
                 </p>
               </FloatingCard>
             </div>
 
             <FloatingCard className="mb-12">
               <h2 className="text-2xl font-bold text-white mb-6">
-                Principles We Live By
+                Our Principles
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {values.map((value) => (
@@ -216,43 +221,20 @@ export default function TeamDetails() {
             </FloatingCard>
 
             <FloatingCard>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                <div>
-                  <h2 className="text-2xl font-bold text-white mb-6 flex items-center">
-                    <Sparkles className="w-6 h-6 text-emerald-300 mr-3" />{" "}
-                    Advisory Network
-                  </h2>
-                  <div className="space-y-4">
-                    {advisors.map((advisor) => (
-                      <div
-                        key={advisor.name}
-                        className="bg-slate-900/60 border border-slate-700/30 rounded-3xl p-5"
-                      >
-                        <div className="text-sm text-emerald-300/80 uppercase tracking-wide mb-1">
-                          {advisor.expertise}
-                        </div>
-                        <div className="text-lg font-semibold text-white">
-                          {advisor.name}
-                        </div>
-                        <div className="text-sm text-slate-400">
-                          {advisor.affiliation}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div className="bg-slate-900/50 border border-slate-700/30 rounded-3xl p-6">
-                  <h3 className="text-lg font-semibold text-white mb-4">
-                    Join Our Coalition
-                  </h3>
-                  <p className="text-sm text-slate-300 leading-relaxed mb-6">
-                    We collaborate with newsrooms, digital forensic labs, civic
-                    watchdogs, and platform trust teams. Interested in
-                    partnering or contributing research? Reach out and
-                    let&apos;s align on impact.
-                  </p>
-                  <Button as="a" href="mailto:xkyzerop@gmail.com">
-                    <Users className="w-4 h-4 mr-2" /> Partner with Us
+              <div className="text-center py-6">
+                <h2 className="text-2xl font-bold text-white mb-4">
+                  Get In Touch
+                </h2>
+                <p className="text-slate-300 mb-6 max-w-2xl mx-auto">
+                  Interested in partnering, contributing research, or learning more
+                  about our AI detection capabilities? We'd love to hear from you.
+                </p>
+                <div className="flex flex-wrap gap-4 justify-center">
+                  <Button as="a" href="mailto:hello@opscores.in">
+                    <Users className="w-4 h-4 mr-2" /> Contact Us
+                  </Button>
+                  <Button as="a" variant="outline" href="https://opscores.in" target="_blank" rel="noopener noreferrer">
+                    <Globe className="w-4 h-4 mr-2" /> Visit OpScores
                   </Button>
                 </div>
               </div>
