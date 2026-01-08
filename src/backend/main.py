@@ -3,7 +3,7 @@ DeFraudAI Backend - Security Hardened
 Implements secure authentication, rate limiting, input validation, and API proxying
 """
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Request, Response, status
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Request, Response, status, APIRouter
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -572,8 +572,10 @@ async def health_check():
 # ============================================
 # Authentication Endpoints
 # ============================================
+api_router = APIRouter()
 
-@app.post("/api/register", response_model=TokenResponse)
+
+@api_router.post("/register", response_model=TokenResponse)
 @limiter.limit("5/minute")
 async def register(request: Request, response: Response, user_data: UserRegister):
     """
@@ -617,7 +619,7 @@ async def register(request: Request, response: Response, user_data: UserRegister
         }
     )
 
-@app.post("/api/login", response_model=TokenResponse)
+@api_router.post("/login", response_model=TokenResponse)
 @limiter.limit("10/minute")
 async def login(request: Request, response: Response, credentials: UserLogin):
     """
@@ -660,7 +662,7 @@ async def login(request: Request, response: Response, credentials: UserLogin):
         }
     )
 
-@app.get("/api/me")
+@api_router.get("/me")
 async def get_current_user_info(user: dict = Depends(get_current_user)):
     """Get current authenticated user info"""
     return {
@@ -670,7 +672,7 @@ async def get_current_user_info(user: dict = Depends(get_current_user)):
         "profile": user.get("profile", {})
     }
 
-@app.post("/api/logout")
+@api_router.post("/logout")
 async def logout(response: Response):
     """
     Logout user by clearing the session cookie.
@@ -688,13 +690,13 @@ async def logout(response: Response):
     )
     return {"message": "Logged out successfully"}
 
-@app.get("/api/user/stats")
+@api_router.get("/user/stats")
 async def get_user_statistics(user: dict = Depends(get_current_user)):
     """Get user analysis statistics"""
     stats = await get_user_stats(user["_id"])
     return stats
 
-@app.get("/api/user/history")
+@api_router.get("/user/history")
 async def get_analysis_history_endpoint(
     limit: int = 50,
     skip: int = 0,
@@ -705,7 +707,7 @@ async def get_analysis_history_endpoint(
     # Return as array for frontend compatibility
     return analyses
 
-@app.delete("/api/user/history/{analysis_id}")
+@api_router.delete("/user/history/{analysis_id}")
 async def delete_analysis_endpoint(
     analysis_id: str,
     user: dict = Depends(get_current_user)
@@ -720,7 +722,7 @@ async def delete_analysis_endpoint(
         )
     return {"message": "Analysis deleted"}
 
-@app.delete("/api/user/history/clear")
+@api_router.delete("/user/history/clear")
 async def clear_history_endpoint(
     user: dict = Depends(get_current_user)
 ):
@@ -733,7 +735,7 @@ async def clear_history_endpoint(
 # Gemini Proxy Endpoint (Secure Server-Side)
 # ============================================
 
-@app.post("/api/gemini-proxy")
+@api_router.post("/gemini-proxy")
 @limiter.limit("20/minute")
 async def gemini_proxy(
     request: Request,
@@ -792,7 +794,7 @@ async def gemini_proxy(
             detail="Failed to connect to Gemini API"
         )
 
-@app.post("/api/gemini-proxy/analyze-image")
+@api_router.post("/gemini-proxy/analyze-image")
 @limiter.limit("10/minute")
 async def gemini_analyze_image(
     request: Request,
@@ -837,6 +839,10 @@ async def gemini_analyze_image(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid image data"
         )
+
+
+# Include the API Router
+app.include_router(api_router, prefix="/api")
 
 # ============================================
 # Image Analysis Endpoints (Protected & Rate Limited)
