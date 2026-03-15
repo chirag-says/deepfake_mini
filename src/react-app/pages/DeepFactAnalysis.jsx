@@ -342,7 +342,7 @@ export default function DeepFactAnalysis() {
               </div>
             </FloatingCard>
 
-            {result.trustScore > 0 && (
+            {result.status !== "pending" && (
               <FloatingCard className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                   <div>
@@ -432,7 +432,7 @@ export default function DeepFactAnalysis() {
                   </div>
                 )}
 
-                {result.analysis.highlights?.length > 0 && (
+                {result.analysis.highlights?.length > 0 && result.trustScore >= 30 && (
                   <div className="bg-green-500/10 border border-green-500/20 rounded-2xl p-6">
                     <h3 className="text-green-300 font-semibold mb-3 flex items-center">
                       <CheckCircle className="w-5 h-5 mr-2" /> Positive
